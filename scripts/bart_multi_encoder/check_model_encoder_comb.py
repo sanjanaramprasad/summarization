@@ -1,4 +1,4 @@
-
+from DataToTextProcessor_encoder import SummaryDataModule
 #from Data2TextProcessor_1 import SummaryDataModule
 from transformers import BartTokenizer
 import torch.optim as optim
@@ -62,7 +62,7 @@ class BartForDataToTextGenerationTester():
 
     def test_model_forward_bart_encoder(self, encoder_combination_type):
         from BartForDataToText_EncoderMod import BartForDataToText
-        from DataToTextProcessor_encoder import SummaryDataModule
+        #from DataToTextProcessor_encoder import SummaryDataModule
         model = BartForDataToText.from_pretrained('facebook/bart-base')
         model._make_duplicate_encoders(layer_share = False)
         model.resize_token_embeddings(len(tokenizer))

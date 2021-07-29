@@ -47,10 +47,10 @@ class BartForDataToText(BartPretrainedModel):
         self.final_layer = nn.Linear(config.d_model * 2, config.d_model)
 
         self.encoder_attn = BartAttention(
-            self.embed_dim,
+            config.d_model * 5,
             config.encoder_attention_heads,
             dropout=config.attention_dropout,
-            is_decoder=True,
+            is_decoder=False,
         )
 
         #print("DIM", config.d_model)
@@ -189,7 +189,7 @@ class BartForDataToText(BartPretrainedModel):
             added_enc_attns = torch.as_tensor(added_enc_attns , device = attention_mask_list[0].device)
             return added_enc_attns
     
-    def _forward_pass(self, encoder_outputs, fc0 , fc1, final_layer):
+    def _forward_pass(self, encoder_outputs, fc0 , final_layer):
         enc_outputs = []
         for i in range(0,3):
             if len(encoder_outputs) > i:
@@ -375,14 +375,27 @@ class BartForDataToText(BartPretrainedModel):
 
             elif encoder_combination_type == 'self_attn':
                 encoder_outputs = self._get_concat_encoder_outputs(encoder_outputs_list)
+                attn_mask = self._get_attention_masks_OR(
+                        [attn_mask for attn_mask in attn_mask_list if not (attn_mask is None)]
+
+                    )
                 
+                ##print(encoder_outputs[0].shape, encoder_outputs_list[0][0].shape) 
                 encoder_outputs_concat, concat_attn_weights, _ = self.encoder_attn(
-                hidden_states = encoder_outputs,
-                attention_mask = decoder_head_mask,
+                hidden_states = encoder_outputs[0],
+                attention_mask = decoder_attention_mask,
                 layer_head_mask=None,
                 output_attentions=output_attentions,
                 )
-                encoder_outputs = self._forward_pass(encoder_outputs, self.fc0, self.fc1, self.final_layer)
+                
+                #print(encoder_outputs_concat.shape, concat_attn_weights)
+                encoder_outputs = BaseModelOutput(
+                last_hidden_state=encoder_outputs_concat,
+                hidden_states=None,
+                attentions=concat_attn_weights,
+                 )
+                #print(encoder_outputs[0].shape)
+                encoder_outputs = self._forward_pass(encoder_outputs, self.fc0,  self.final_layer)
                 attn_mask = None
 
 

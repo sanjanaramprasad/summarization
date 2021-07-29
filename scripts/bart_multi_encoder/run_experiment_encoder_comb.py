@@ -1,3 +1,4 @@
+from DataToTextProcessor_encoder import SummaryDataModule
 import pandas as pd
 import transformers
 import torch
@@ -33,7 +34,7 @@ import torch.nn.functional as F
 import pytorch_lightning as pl
 import torch
 from pytorch_lightning.callbacks import ModelCheckpoint
-from scripts.bart_multi_encoder.BartForDataToTextGeneration_encoder_combination import BartForDataToText
+from BartForDataToText_EncoderMod import BartForDataToText
 import math
 import random
 import re
@@ -83,8 +84,8 @@ class LitModel(pl.LightningModule):
             freeze_params(d.embed_tokens)
 
     # Do a forward pass through the model
-    def forward(self, population_input_ids, **kwargs):
-        return self.model(population_input_ids, **kwargs)
+    def forward(self, input_ids_col0, **kwargs):
+        return self.model(input_ids_col0, **kwargs)
   
     def configure_optimizers(self):
         print("PARAMS", self.parameters())
@@ -134,9 +135,8 @@ class LitModel(pl.LightningModule):
             attention_mask_col3 = punchline_text_attention_masks,
             attention_mask_col4 = punchline_effect_attention_masks,
             labels = tgt_ids,
-            encoder_combination_type = self.encoder_combination_type,
+            encoder_combination_type = 'self_attn',
             decoder_input_ids = None,
-            inc_count = self.max_len,
             use_cache = False,
         )
         
@@ -190,9 +190,8 @@ class LitModel(pl.LightningModule):
             attention_mask_col3 = punchline_text_attention_masks,
             attention_mask_col4 = punchline_effect_attention_masks,
             labels = tgt_ids,
-            encoder_combination_type = self.encoder_combination_type,
+            encoder_combination_type = 'self_attn',
             decoder_input_ids = None,
-            inc_count = self.max_len,
             use_cache = False,
         )
 
@@ -216,7 +215,7 @@ class LitModel(pl.LightningModule):
 
 
 
-def make_data(tokenizer, SummaryDataModule,  data_type = 'robo', path = '/home/sanjana', files = ['robo_train_sep.csv', 'robo_dev_sep.csv', 'robo_test_sep.csv'], max_len = 256):
+def make_data(tokenizer, SummaryDataModule,  data_type = 'robo', path = '/home/sanjana', files = ['robo_train_sep.csv', 'robo_dev_sep.csv', 'robo_test_sep.csv'], max_len = 1024):
     if data_type == 'robo':
         train_file = path + '/summarization/datasets/%s'%(files[0])
         dev_file = path + '/summarization/datasets/%s'%(files[1])
@@ -250,7 +249,7 @@ def main(encoder_combination_type = 'addition', layer_share = False):
                                                     pad_token = "<pad>")
 
     tokenizer.add_tokens(additional_special_tokens) 
-    from Data2TextProcessor import SummaryDataModule
+    ##from Data2TextProcessor import SummaryDataModule
     files = ['train_rr_data.csv', 
                             'dev_rr_data.csv', 'test_rr_data.csv']
     max_len = 1024
@@ -272,7 +271,7 @@ def main(encoder_combination_type = 'addition', layer_share = False):
                                 filename = '{epoch}-{val_loss:.2f}',
                                 save_top_k=10,
                                 monitor = 'val_loss')
-    trainer = pl.Trainer(gpus=2, accelerator='dp', 
+    trainer = pl.Trainer(gpus=1, accelerator='dp', 
 			max_epochs = max_epochs,
                         min_epochs = 1,
                         auto_lr_find = False,
@@ -288,7 +287,7 @@ def main(encoder_combination_type = 'addition', layer_share = False):
 
 if __name__ == '__main__': 
     #main(encoder_forward_strategy = 'single', encoder_combination_type = 'linearized')
-    main(encoder_combination_type = 'addition')
+    main(encoder_combination_type = 'self_attn')
     #main(encoder_forward_strategy = 'single', encoder_combination_type = 'linearized')
     #main(encoder_forward_strategy = 'loop', encoder_combination_type = 'addition', loop_strategy = 'addition')
     #main(encoder_forward_strategy = 'loop', encoder_combination_type = 'linearize', loop_strategy = 'addition')

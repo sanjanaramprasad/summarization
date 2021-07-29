@@ -40,7 +40,7 @@ def encode_sentences(tokenizer, df, source_keys, targets, max_length=1024, pad_t
                     snippet_processed.append(each)
             snippet = " ".join(snippet_processed)
         #print(snippet)
-        encoded_dict = run_bart(snippet)
+        encoded_dict = run_bart(snippet.strip())
         return encoded_dict
 
     encoded_sentences = {}
@@ -54,9 +54,10 @@ def encode_sentences(tokenizer, df, source_keys, targets, max_length=1024, pad_t
             encoded_sentences[id_key] = []
             encoded_sentences[attention_mask_key] = []
         df_val = list(df[key].values)
-
-        for sentence in df_val:
-            sentence_encoding = get_encoding(sentence, key)
+        #print(df_val[:10])
+        for sentences in df_val:
+            sentences = eval(sentences)
+            sentence_encoding = get_encoding(sentences, key)
             encoded_sentences[id_key].append(sentence_encoding['input_ids'])
             encoded_sentences[attention_mask_key].append(sentence_encoding['attention_mask'])
     
@@ -99,7 +100,7 @@ class SummaryDataModule(pl.LightningDataModule):
         self.validate = pd.read_csv(self.data_files[1])
         self.test = pd.read_csv(self.data_files[2])
 
-    def setup(self):
+    def setup(self, stage):
         self.train = encode_sentences(self.tokenizer, 
                                       self.train,
                                         ['population', 
@@ -197,15 +198,18 @@ if __name__ == '__main__':
     
                                     
     
-    summary_data = make_data(tokenizer, SummaryDataModule, data_type = 'robo', path = '/Users/sanjana', files = data_files, max_len = 1024)
+    summary_data = make_data(tokenizer, SummaryDataModule, data_type = 'robo', path = '/home/ramprasad.sa', files = data_files, max_len = 1024)
     print(summary_data.train)
-    summary_data.setup()
-    it = summary_data.train_dataloader()
+    summary_data.setup("stage")
+    it = summary_data.val_dataloader()
     batches = iter(it)
     batch = next(batches)
 
     generated_ids = batch[0]
     output = " ".join([tokenizer.decode(w, skip_special_tokens=True, clean_up_tokenization_spaces=True) for w in generated_ids])
     print(output)
+    print(batch[1])
 
-    
+    generated_ids = batch[2]
+    output = " ".join([tokenizer.decode(w, skip_special_tokens=True, clean_up_tokenization_spaces=True) for w in generated_ids])
+    print(output) 
