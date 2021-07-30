@@ -6,9 +6,9 @@ from transformers.models.bart.configuration_bart import BartConfig
 import torch
 import torch.distributed as dist
 from torch.nn import functional as F
-from BartForDataToTextGeneration_encoder_combination import BartForDataToText
+from BartForDataToText_EncoderMod import BartForDataToText
 from transformers.generation_utils import GenerationMixin
-from run_experiment_encoder_combination import LitModel
+from run_experiment_encoder_comb import LitModel
 from transformers import BartTokenizer
 import argparse
 from rouge import Rouge
@@ -18,10 +18,10 @@ from transformers.file_utils import ModelOutput
 import pandas as pd
 import nltk
 from nltk.translate import meteor_score
-from Data2TextGenerator import Data2TextGenerator
+from DataToTextGenerator import Data2TextGenerator
 import numpy as np
 import subprocess, os, sys 
-import config_encoder_self_attn 
+import config_self_attn_enc 
 
 parent_dir_name = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 
@@ -75,6 +75,10 @@ def sample_scorer(sample, model, tokenizer, nbeams, min_len, r_penalty, l_penalt
         if model_output.strip():
             model_outputs.append(model_output)
             targets.append(target)
+            print("MO : ", model_output)
+            print('-' * 13)
+            print('TARGETS : ', target)
+            print('=' * 13)
     print('='*13)
     print("Values: num_beam:%s || min_len:%s || r_penalty:%s || l_penalty:%s"%( nbeams, min_len, r_penalty, l_penalty))
     show_gpu('GPU memory usage after sample:')
@@ -127,7 +131,7 @@ def parameter_search(sample,  model, tokenizer, device):
 
 def run_inference( encoder_combination_strategy, checkpoint_file, parameter_look = True, write_results = True):
     if encoder_combination_strategy == 'self_attn_enc':
-        config = config_encoder_self_attn
+        config = config_self_attn_enc
 
     tokenizer = config.tokenizer
     special_tokens = config.additional_special_tokens
@@ -171,7 +175,7 @@ def run_inference( encoder_combination_strategy, checkpoint_file, parameter_look
 if __name__ =='__main__':
     checkpoint_file = ''
     encoder_combination_strategy = 'self_attn_enc'
-
+    output_file = ''
     if not output_file:
         with torch.no_grad():
             model_outputs, targets,  rougeScore, meteorScore, bleuScore = run_inference( encoder_combination_strategy, checkpoint_file)

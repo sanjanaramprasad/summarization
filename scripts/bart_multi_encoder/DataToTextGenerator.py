@@ -393,7 +393,7 @@ class Data2TextGenerator(GenerationMixin):
             input_ids, model_kwargs = self._expand_inputs_for_generation(
                 input_ids, expand_size=num_beams, is_encoder_decoder=self.config.is_encoder_decoder, **model_kwargs
             )
-            ##print("BEAM SEARCH KWARGS", model_kwargs)
+            ##############print("BEAM SEARCH KWARGS", model_kwargs)
             return self.model.beam_search(
                 input_ids,
                 beam_scorer,
@@ -519,4 +519,34 @@ class Data2TextGenerator(GenerationMixin):
             )
 
 
-
+if __name__ == '__main__':
+  from run_experiment_encoder_comb import LitModel
+  import config_self_attn_enc as config
+  checkpoint_file = 'checkpoint_files/3e-5_self_attn/epoch=2-val_loss=0.28.ckpt'
+  model = LitModel.load_from_checkpoint(checkpoint_file)
+  tokenizer = BartTokenizer.from_pretrained('facebook/bart-base', bos_token="<s>",
+                                                    eos_token="</s>",
+                                                    pad_token = "<pad>")
+  summary_data = config.summary_data
+  summary_data.setup("stage")
+  val_data = summary_data.train_dataloader() 
+  device = torch.device("cuda")
+  model = config.model
+  model.to(device)
+  generator = Data2TextGenerator(model, tokenizer)
+  for each in val_data:
+        nbeams = 3
+        min_len = 20
+        r_penalty = 1.0
+        l_penalty = 1.0
+        outputs = generator.generate(each, num_beams = nbeams,  max_length = 400, min_length = min_len, repetition_penalty = r_penalty, length_penalty = l_penalty, encoder_combination_type = 'self_attn', device = device)
+        model_output = ' '.join([tokenizer.decode(w, skip_special_tokens=True, clean_up_tokenization_spaces=True) for w in outputs])
+        target = ' '.join([tokenizer.decode(w, skip_special_tokens=True, clean_up_tokenization_spaces=True) for w in each[-1]])
+        if model_output.strip():
+            print('INP : ', ' '.join([tokenizer.decode(w, skip_special_tokens=True, clean_up_tokenization_spaces=True) for w in each[0]]))
+            print(model_output)
+            print('-' *13)
+            print(target)
+            print('=' * 13)
+            #model_outputs.append(model_output)
+            #targets.append(target)

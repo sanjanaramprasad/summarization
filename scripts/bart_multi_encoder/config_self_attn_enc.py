@@ -1,5 +1,5 @@
 #from transformers import BartTokenizer
-from Data2TextProcessor import SummaryDataModule
+from DataToTextProcessor_encoder import SummaryDataModule
 from transformers import BartTokenizer
 import subprocess, os, sys 
 from run_experiment_encoder_comb import LitModel
@@ -40,8 +40,8 @@ tokenizer = BartTokenizer.from_pretrained('facebook/bart-base', bos_token="<s>",
 
 
 summary_data = make_data(tokenizer, SummaryDataModule, data_type = 'robo')
-
-checkpoint_file = 'bart_multi_encoder/checkpoint_files/3e-5_self_attn/epoch=2-val_loss=0.28.ckpt'
+print(summary_data.train)
+checkpoint_file = 'scripts/bart_multi_encoder/checkpoint_files/3e-5_self_attn/epoch=2-val_loss=0.28.ckpt'
 print(parent_dir_name + checkpoint_file)
 model = LitModel.load_from_checkpoint(checkpoint_path=parent_dir_name + checkpoint_file)
 

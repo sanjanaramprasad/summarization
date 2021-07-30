@@ -209,7 +209,7 @@ if __name__ == '__main__':
     output = " ".join([tokenizer.decode(w, skip_special_tokens=True, clean_up_tokenization_spaces=True) for w in generated_ids])
     print(output)
     print(batch[1])
-
-    generated_ids = batch[2]
+    batch = next(batches)
+    generated_ids = batch[0]
     output = " ".join([tokenizer.decode(w, skip_special_tokens=True, clean_up_tokenization_spaces=True) for w in generated_ids])
     print(output) 
