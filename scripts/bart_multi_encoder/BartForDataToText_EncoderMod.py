@@ -52,7 +52,7 @@ class BartForDataToText(BartPretrainedModel):
             dropout=config.attention_dropout,
             is_decoder=False,
         )
-        self.self_attn_layer_norm = nn.LayerNorm(config.d_model)
+        self.self_attn_layer_norm = nn.LayerNorm(config.d_model * 5)
 
         self.fc1 = nn.Linear(config.d_model * 5 , config.d_model * 20)
         self.fc2 = nn.Linear(config.d_model * 20, config.d_model * 5)
