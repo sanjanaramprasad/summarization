@@ -43,8 +43,8 @@ class BartForDataToText(BartPretrainedModel):
         
         self.register_buffer("final_logits_bias", torch.zeros((1, self.shared.num_embeddings)))
         self.lm_head = nn.Linear(config.d_model, self.shared.num_embeddings, bias=False)
-        self.fc0 = nn.Linear(config.d_model * 5, config.d_model * 2)
-        self.final_layer = nn.Linear(config.d_model * 2, config.d_model)
+        ##self.fc0 = nn.Linear(config.d_model * 5, config.d_model * 2)
+        ##self.final_layer = nn.Linear(config.d_model * 2, config.d_model)
 
         self.encoder_attn = BartAttention(
             config.d_model * 5,
@@ -52,6 +52,10 @@ class BartForDataToText(BartPretrainedModel):
             dropout=config.attention_dropout,
             is_decoder=False,
         )
+        self.self_attn_layer_norm = nn.LayerNorm(config.d_model)
+        self.fc1 = nn.Linear(config.d_model * 5 , 7000)
+        self.fc2 = nn.Linear(7000, config.d_model)
+        self.final_layer_norm = nn.LayerNorm(config.d_model)
 
         #print("DIM", config.d_model)
         self.init_weights()
@@ -374,29 +378,50 @@ class BartForDataToText(BartPretrainedModel):
 
 
             elif encoder_combination_type == 'self_attn':
-                encoder_outputs = self._get_concat_encoder_outputs(encoder_outputs_list)
+
+                #### 1) Concatenate encoders and get attention expanded for SA
+                encoder_outputs_concat = self._get_concat_encoder_outputs(encoder_outputs_list)
                 attn_mask = self._get_attention_masks_OR(
                         [attn_mask for attn_mask in attn_mask_list if not (attn_mask is None)]
 
                     )
-                
-                ##print(encoder_outputs[0].shape, encoder_outputs_list[0][0].shape) 
-                encoder_outputs_concat, concat_attn_weights, _ = self.encoder_attn(
-                hidden_states = encoder_outputs[0],
-                attention_mask = decoder_attention_mask,
+                self_attention_mask = _expand_mask(attn_mask, input_ids_col0.dtype)
+                residual = encoder_outputs_concat[0]
+
+                #### 2) Self Attention
+
+                attn_encoder_outputs_concat, _, _ = self.encoder_attn(
+                hidden_states = encoder_outputs_concat[0],
+                attention_mask = self_attention_mask,
                 layer_head_mask=None,
                 output_attentions=output_attentions,
                 )
+                attn_encoder_outputs_concat = F.dropout(attn_encoder_outputs_concat, p=self.dropout, training=self.training)
+                
+
+                #### 3) Add and Normalize
+                hidden_states = attn_encoder_outputs_concat + residual
+                hidden_states = self.self_attn_layer_norm(hidden_states)
+                residual = hidden_states
+
+                #### 4) FCN 
+                
+                hidden_states = self.activation_fn(self.fc1(hidden_states))
+                hidden_states = F.dropout(hidden_states, p=self.activation_dropout, training=self.training)
+                hidden_states = self.fc2(hidden_states)
+                hidden_states = F.dropout(hidden_states, p=self.dropout, training=self.training)
+
+                #### 5) Add and Normalize
+                hidden_states = residual + hidden_states
+                hidden_states = self.final_layer_norm(hidden_states)
+
                 
                 #print(encoder_outputs_concat.shape, concat_attn_weights)
                 encoder_outputs = BaseModelOutput(
-                last_hidden_state=encoder_outputs_concat,
+                last_hidden_state=hidden_states,
                 hidden_states=None,
-                attentions=concat_attn_weights,
-                 )
-                #print(encoder_outputs[0].shape)
-                encoder_outputs = self._forward_pass(encoder_outputs, self.fc0,  self.final_layer)
-                attn_mask = None
+                attentions=None,
+                )
 
 
         
