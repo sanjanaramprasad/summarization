@@ -53,9 +53,14 @@ class BartForDataToText(BartPretrainedModel):
             is_decoder=False,
         )
         self.self_attn_layer_norm = nn.LayerNorm(config.d_model)
-        self.fc1 = nn.Linear(config.d_model * 5 , 7000)
-        self.fc2 = nn.Linear(7000, config.d_model)
-        self.final_layer_norm = nn.LayerNorm(config.d_model)
+
+        self.fc1 = nn.Linear(config.d_model * 5 , config.d_model * 20)
+        self.fc2 = nn.Linear(config.d_model * 20, config.d_model * 5)
+        self.final_layer_norm = nn.LayerNorm(config.d_model * 5)
+
+        self.fc3 = nn.Linear(config.d_model * 5, config.d_model * 2)
+        self.fc4 = nn.Linear(config.d_model * 2, config.d_model )
+        self.condense_layer_norm = nn.LayerNorm(config.d_model)
 
         #print("DIM", config.d_model)
         self.init_weights()
@@ -385,7 +390,8 @@ class BartForDataToText(BartPretrainedModel):
                         [attn_mask for attn_mask in attn_mask_list if not (attn_mask is None)]
 
                     )
-                self_attention_mask = _expand_mask(attn_mask, input_ids_col0.dtype)
+                ##self_attention_mask = _expand_mask(attn_mask, input_ids_col0.dtype)
+                self_attention_mask = None
                 residual = encoder_outputs_concat[0]
 
                 #### 2) Self Attention
@@ -415,6 +421,12 @@ class BartForDataToText(BartPretrainedModel):
                 hidden_states = residual + hidden_states
                 hidden_states = self.final_layer_norm(hidden_states)
 
+                #### 6) Condense layer
+                hidden_states = self.activation_fn(self.fc3(hidden_states))
+                hidden_states = F.dropout(hidden_states, p=self.activation_dropout, training=self.training)
+                hidden_states = self.fc4(hidden_states)
+                hidden_states = F.dropout(hidden_states, p=self.dropout, training=self.training)
+                hidden_states = self.condense_layer_norm(hidden_states)
                 
                 #print(encoder_outputs_concat.shape, concat_attn_weights)
                 encoder_outputs = BaseModelOutput(
