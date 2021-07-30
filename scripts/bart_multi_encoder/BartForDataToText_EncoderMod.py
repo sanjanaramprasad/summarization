@@ -474,8 +474,8 @@ class BartForDataToText(BartPretrainedModel):
         encoder_outputs_col2 = None,
         encoder_outputs_col3 = None,
         encoder_outputs_col4 = None,
-        encoder_forward_strategy = 'single',
-        encoder_combination_type = 'addition',
+        encoder_combination_type = 'self_attn',
+        decoder_attention_mask = None,
         **kwargs
     ):
         # cut decoder_input_ids if past is used
@@ -500,8 +500,8 @@ class BartForDataToText(BartPretrainedModel):
             "attention_mask_col2": attention_mask_col2,
             "attention_mask_col3": attention_mask_col3,
             "attention_mask_col4": attention_mask_col4,
-            "encoder_forward_strategy": encoder_forward_strategy,
             "encoder_combination_type": encoder_combination_type,
+            "decoder_attention_mask": decoder_attention_mask,
             "head_mask": head_mask,
             "use_cache": use_cache,  # change this to avoid caching (presumably for debugging)
             
