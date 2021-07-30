@@ -408,9 +408,8 @@ class BartForDataToText(BartPretrainedModel):
                 #### 3) Add and Normalize
                 hidden_states = attn_encoder_outputs_concat + residual
                 hidden_states = self.self_attn_layer_norm(hidden_states)
-                residual = hidden_states
 
-                #### 4) FCN 
+                '''#### 4) FCN 
                 
                 hidden_states = self.activation_fn(self.fc1(hidden_states))
                 hidden_states = F.dropout(hidden_states, p=self.activation_dropout, training=self.training)
@@ -419,7 +418,7 @@ class BartForDataToText(BartPretrainedModel):
 
                 #### 5) Add and Normalize
                 hidden_states = residual + hidden_states
-                hidden_states = self.final_layer_norm(hidden_states)
+                hidden_states = self.final_layer_norm(hidden_states)'''
 
                 #### 6) Condense layer
                 hidden_states = self.activation_fn(self.fc3(hidden_states))
