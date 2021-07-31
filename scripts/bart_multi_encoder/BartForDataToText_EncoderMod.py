@@ -46,17 +46,22 @@ class BartForDataToText(BartPretrainedModel):
         ##self.fc0 = nn.Linear(config.d_model * 5, config.d_model * 2)
         ##self.final_layer = nn.Linear(config.d_model * 2, config.d_model)
 
-        self.encoder_attn = BartAttention(
+        self.encoder_attn_concat = BartAttention(
             config.d_model * 5,
             config.encoder_attention_heads,
             dropout=config.attention_dropout,
             is_decoder=False,
         )
-        self.self_attn_layer_norm = nn.LayerNorm(config.d_model * 5)
+        self.encoder_attn_concat_norm = nn.LayerNorm(config.d_model * 5)
 
-        self.fc1 = nn.Linear(config.d_model * 5 , config.d_model * 20)
-        self.fc2 = nn.Linear(config.d_model * 20, config.d_model * 5)
-        self.final_layer_norm = nn.LayerNorm(config.d_model * 5)
+        self.encoder_attn_rec = BartAttention(
+            config.d_model,
+            config.encoder_attention_heads,
+            dropout=config.attention_dropout,
+            is_decoder=False,
+        )
+        self.encoder_attn_concat_norm = nn.LayerNorm(config.d_model)
+
 
         self.fc3 = nn.Linear(config.d_model * 5, config.d_model * 2)
         self.fc4 = nn.Linear(config.d_model * 2, config.d_model )
@@ -64,6 +69,7 @@ class BartForDataToText(BartPretrainedModel):
 
         #print("DIM", config.d_model)
         self.init_weights()
+
         
 
         
@@ -381,6 +387,44 @@ class BartForDataToText(BartPretrainedModel):
                 encoder_outputs = self._forward_pass(encoder_outputs, self.fc0, self.fc1, self.final_layer)
                 attn_mask = None
 
+            elif encoder_combination_type == 'recursive_cross_attn':
+                residual = None
+                for i, enc_output in enumerate(encoder_outputs_list):
+                    hidden_states = enc_output
+                    if i == 0:
+                        residual = hidden_states
+                        hidden_states, _ , _ = self.encoder_attn_rec(
+                            hidden_states = hidden_states,
+                            attention_mask = None,
+                            layer_head_mask=None,
+                            output_attentions=output_attentions,
+                            )
+                        hidden_states = F.dropout(hidden_states, p=self.dropout, training=self.training)
+                        hidden_states = residual + hidden_states
+                        hidden_states = self.encoder_attn_rec_norm(hidden_states)
+                        residual = hidden_states
+
+                    else:
+                        hidden_states, _ , _ = self.encoder_attn_rec(
+                            hidden_states = hidden_states,
+                            key_value_states=residual,
+                            attention_mask = None,
+                            layer_head_mask=None,
+                            output_attentions=output_attentions,
+                            )
+                        hidden_states = F.dropout(hidden_states, p=self.dropout, training=self.training)
+                        hidden_states = residual + hidden_states
+                        hidden_states = self.encoder_attn_rec_norm(hidden_states)
+                        residual = hidden_states
+
+                encoder_outputs = BaseModelOutput(
+                last_hidden_state=hidden_states,
+                hidden_states=None,
+                attentions=None,
+                )
+                        
+                        
+
 
             elif encoder_combination_type == 'self_attn':
 
@@ -396,7 +440,7 @@ class BartForDataToText(BartPretrainedModel):
 
                 #### 2) Self Attention
 
-                attn_encoder_outputs_concat, _, _ = self.encoder_attn(
+                attn_encoder_outputs_concat, _, _ = self.encoder_attn_concat(
                 hidden_states = encoder_outputs_concat[0],
                 attention_mask = self_attention_mask,
                 layer_head_mask=None,
@@ -407,7 +451,7 @@ class BartForDataToText(BartPretrainedModel):
 
                 #### 3) Add and Normalize
                 hidden_states = attn_encoder_outputs_concat + residual
-                hidden_states = self.self_attn_layer_norm(hidden_states)
+                hidden_states = self.encoder_attn_concat_norm(hidden_states)
 
                 '''#### 4) FCN 
                 
