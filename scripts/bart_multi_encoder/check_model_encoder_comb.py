@@ -115,5 +115,5 @@ class BartForDataToTextGenerationTester():
  
         
 obj = BartForDataToTextGenerationTester()
-obj.test_model_forward_bart_encoder(encoder_combination_type = 'self_attn')
+obj.test_model_forward_bart_encoder(encoder_combination_type = 'recursive_cross_attn')
 #obj.test_model_forward_bart_encoder_loop_per_study(encoder_combination_type = 'linearize')

@@ -2,7 +2,7 @@ import torch
 import torch.nn.functional as F
 from torch import nn
 from transformers.models.bart.modeling_bart import BartEncoder, BartDecoder, BartPretrainedModel, shift_tokens_right, BartDecoderLayer, BartLearnedPositionalEmbedding, BartAttention, _make_causal_mask, _expand_mask
-
+import math
 from transformers.models.bart.configuration_bart import BartConfig
 from transformers.modeling_outputs import BaseModelOutput,Seq2SeqLMOutput,Seq2SeqModelOutput, Seq2SeqQuestionAnsweringModelOutput,Seq2SeqSequenceClassifierOutput
 from transformers.modeling_utils import PreTrainedModel
@@ -33,7 +33,8 @@ class BartForDataToText(BartPretrainedModel):
         self.dropout = config.dropout
         self.activation_fn = ACT2FN[config.activation_function]
         self.activation_dropout = config.activation_dropout
-
+        self.embed_tokens = nn.Embedding(config.vocab_size, config.d_model, config.pad_token_id)
+        self.embed_scale = math.sqrt(embed_dim) if config.scale_embedding else 1.0
 
         self.encoder = BartEncoder(config, self.shared)
         
@@ -60,7 +61,7 @@ class BartForDataToText(BartPretrainedModel):
             dropout=config.attention_dropout,
             is_decoder=False,
         )
-        self.encoder_attn_concat_norm = nn.LayerNorm(config.d_model)
+        self.encoder_attn_rec_norm = nn.LayerNorm(config.d_model)
 
 
         self.fc3 = nn.Linear(config.d_model * 5, config.d_model * 2)
@@ -351,7 +352,7 @@ class BartForDataToText(BartPretrainedModel):
         encoder_outputs_list = [each for each in encoder_outputs if each is not None]
         attention_masks = [attention_mask_col0, attention_mask_col1, attention_mask_col2, attention_mask_col3, attention_mask_col4]
         attn_mask_list = [each for each in attention_masks if each is not None]
-
+        inputs_embeds_dummy = self.embed_tokens(input_ids_col0) * self.embed_scale
 
         if len(encoder_outputs_list) == 1:
             encoder_outputs = encoder_outputs_list[0]
@@ -389,13 +390,17 @@ class BartForDataToText(BartPretrainedModel):
 
             elif encoder_combination_type == 'recursive_cross_attn':
                 residual = None
+                attn_mask = None
+                #inputs_embeds = self.embed_tokens(input_ids_col0) * self.embed_scale
                 for i, enc_output in enumerate(encoder_outputs_list):
-                    hidden_states = enc_output
+                    hidden_states = enc_output[0]
+                    attention_mask = attn_mask_list[i]
+                    attention_mask = _expand_mask(attention_mask, inputs_embeds_dummy.dtype, tgt_len=inputs_embeds_dummy.size()[:-1][-1])
                     if i == 0:
                         residual = hidden_states
                         hidden_states, _ , _ = self.encoder_attn_rec(
                             hidden_states = hidden_states,
-                            attention_mask = None,
+                            attention_mask = attention_mask,
                             layer_head_mask=None,
                             output_attentions=output_attentions,
                             )
@@ -408,7 +413,7 @@ class BartForDataToText(BartPretrainedModel):
                         hidden_states, _ , _ = self.encoder_attn_rec(
                             hidden_states = hidden_states,
                             key_value_states=residual,
-                            attention_mask = None,
+                            attention_mask = attention_mask,
                             layer_head_mask=None,
                             output_attentions=output_attentions,
                             )
@@ -434,15 +439,19 @@ class BartForDataToText(BartPretrainedModel):
                         [attn_mask for attn_mask in attn_mask_list if not (attn_mask is None)]
 
                     )
-                ##self_attention_mask = _expand_mask(attn_mask, input_ids_col0.dtype)
-                self_attention_mask = None
+                #attn_mask = torch.cat([attn_mask for attn_mask in attn_mask_list if not (attn_mask is None)], dim=1)
+                #print(attn_mask.shape)
+                #print(attn_mask_list[0].dtype)
+                #self_attention_mask = _expand_mask(attn_mask, torch.float)
+                #self_attention_mask = None
+                attention_mask = _expand_mask(attn_mask, inputs_embeds_dummy.dtype, tgt_len=inputs_embeds_dummy.size()[:-1][-1])
                 residual = encoder_outputs_concat[0]
 
                 #### 2) Self Attention
 
                 attn_encoder_outputs_concat, _, _ = self.encoder_attn_concat(
                 hidden_states = encoder_outputs_concat[0],
-                attention_mask = self_attention_mask,
+                attention_mask = attention_mask,
                 layer_head_mask=None,
                 output_attentions=output_attentions,
                 )
@@ -477,6 +486,8 @@ class BartForDataToText(BartPretrainedModel):
                 hidden_states=None,
                 attentions=None,
                 )
+                attn_mask = None
+                
 
 
         
