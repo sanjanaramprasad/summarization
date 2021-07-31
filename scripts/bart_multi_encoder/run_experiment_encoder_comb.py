@@ -135,7 +135,7 @@ class LitModel(pl.LightningModule):
             attention_mask_col3 = punchline_text_attention_masks,
             attention_mask_col4 = punchline_effect_attention_masks,
             labels = tgt_ids,
-            encoder_combination_type = 'self_attn',
+            encoder_combination_type = self.encoder_combination_type,
             decoder_input_ids = None,
             use_cache = False,
         )
@@ -190,7 +190,7 @@ class LitModel(pl.LightningModule):
             attention_mask_col3 = punchline_text_attention_masks,
             attention_mask_col4 = punchline_effect_attention_masks,
             labels = tgt_ids,
-            encoder_combination_type = 'self_attn',
+            encoder_combination_type = self.encoder_combination_type,
             decoder_input_ids = None,
             use_cache = False,
         )
@@ -286,13 +286,6 @@ def main(encoder_combination_type = 'addition', layer_share = False):
 
 
 if __name__ == '__main__': 
-    #main(encoder_forward_strategy = 'single', encoder_combination_type = 'linearized')
     main(encoder_combination_type = 'self_attn')
-    #main(encoder_forward_strategy = 'single', encoder_combination_type = 'linearized')
-    #main(encoder_forward_strategy = 'loop', encoder_combination_type = 'addition', loop_strategy = 'addition')
-    #main(encoder_forward_strategy = 'loop', encoder_combination_type = 'linearize', loop_strategy = 'addition')
-
-    #main(encoder_forward_strategy = 'loop', encoder_combination_type = 'addition', loop_strategy = 'linearize')
-    #main(encoder_forward_strategy = 'loop', encoder_combination_type = 'linearize', loop_strategy = 'linearize')
            
 

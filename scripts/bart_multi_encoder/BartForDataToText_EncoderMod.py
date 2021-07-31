@@ -27,7 +27,7 @@ class BartForDataToText(BartPretrainedModel):
     
     def __init__(self, config: BartConfig):
         super().__init__(config)
-        print(config.encoder_layers)
+        embed_dim = config.d_model
         padding_idx, vocab_size = config.pad_token_id, config.vocab_size
         self.shared = nn.Embedding(vocab_size, config.d_model, padding_idx)
         self.dropout = config.dropout
@@ -200,7 +200,7 @@ class BartForDataToText(BartPretrainedModel):
 
             all_attn_outputs = torch.stack(attention_mask_list, 0)
             added_enc_attns = torch.Tensor.float(all_attn_outputs).mean(0).tolist()
-            added_enc_attns = [[1 if each > 0 else 0 for each in each_list] for each_list in added_enc_attns]
+            added_enc_attns = [[1 if each > 0.5 else 0 for each in each_list] for each_list in added_enc_attns]
             #added_enc_attns = torch.as_tensor([added_enc_attns])
             added_enc_attns = torch.as_tensor(added_enc_attns , device = attention_mask_list[0].device)
             return added_enc_attns
@@ -487,6 +487,7 @@ class BartForDataToText(BartPretrainedModel):
                 attentions=None,
                 )
                 attn_mask = None
+                
                 
 
 
