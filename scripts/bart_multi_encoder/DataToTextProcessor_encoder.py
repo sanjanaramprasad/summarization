@@ -82,7 +82,10 @@ def encode_sentences(tokenizer, df, source_keys, targets, max_length=1024, pad_t
 
     return encoded_sentences
 
-
+def preprocess_df(df, keys):
+    for key in keys:
+        df = df[df[key] != "['']"]
+    return df
 
 class SummaryDataModule(pl.LightningDataModule):
     def __init__(self, tokenizer, data_files, batch_size, num_examples = 20000 , max_len = 1024, flatten_studies = False):
@@ -99,6 +102,10 @@ class SummaryDataModule(pl.LightningDataModule):
         self.train = pd.read_csv(self.data_files[0])
         self.validate = pd.read_csv(self.data_files[1])
         self.test = pd.read_csv(self.data_files[2])
+        preprocess_keys = ['population', 'interventions', 'outcomes', 'SummaryConclusions','punchline_text', 'punchline_effect' ]
+        self.train = preprocess_df(self.train, preprocess_keys)
+        self.validate = preprocess_df(self.validate, preprocess_keys)
+        self.test = preprocess_df(self.test, preprocess_keys)
 
     def setup(self, stage):
         self.train = encode_sentences(self.tokenizer, 
@@ -205,11 +212,42 @@ if __name__ == '__main__':
     batches = iter(it)
     batch = next(batches)
 
-    generated_ids = batch[0]
-    output = " ".join([tokenizer.decode(w, skip_special_tokens=True, clean_up_tokenization_spaces=True) for w in generated_ids])
-    print(output)
-    print(batch[1])
-    batch = next(batches)
-    generated_ids = batch[0]
-    output = " ".join([tokenizer.decode(w, skip_special_tokens=True, clean_up_tokenization_spaces=True) for w in generated_ids])
-    print(output) 
+    def print_pico(batch):
+        population_input_ids = batch[0] if len(batch) >1 else None
+        population_attention_masks = batch[1] if len(batch) >1 else None
+        print("POPULATION")
+        print(" ".join([tokenizer.decode(w, skip_special_tokens=True, clean_up_tokenization_spaces=True) for w in population_input_ids]))
+        print(population_attention_masks)
+
+
+        interventions_input_ids = batch[2] if len(batch) >3 else None
+        interventions_attention_masks = batch[3] if len(batch) >3 else None
+        print("INTERVENTIONS")
+        print(" ".join([tokenizer.decode(w, skip_special_tokens=True, clean_up_tokenization_spaces=True) for w in interventions_input_ids]))
+        print(interventions_attention_masks)
+
+
+        outcomes_input_ids = batch[4] if len(batch) >5 else None
+        outcomes_attention_masks = batch[5] if len(batch) >5 else None
+
+        print("OUTCOMES")
+        print(" ".join([tokenizer.decode(w, skip_special_tokens=True, clean_up_tokenization_spaces=True) for w in outcomes_input_ids]))
+        print(outcomes_attention_masks)
+
+        punchline_text_input_ids = batch[6] if len(batch) >7 else None
+        punchline_text_attention_masks = batch[7] if len(batch) >7 else None
+
+        print("PUNCHLINE TEXT")
+        print(" ".join([tokenizer.decode(w, skip_special_tokens=True, clean_up_tokenization_spaces=True) for w in punchline_text_input_ids]))
+        print(punchline_text_attention_masks)
+
+        punchline_effect_input_ids = batch[8] if len(batch) >9 else None
+        punchline_effect_attention_masks = batch[9] if len(batch) >9 else None
+        print("PUNCHLINE EFFECT")
+        print(" ".join([tokenizer.decode(w, skip_special_tokens=True, clean_up_tokenization_spaces=True) for w in punchline_effect_input_ids]))
+        print(punchline_effect_attention_masks)
+
+    for batch in list(batches)[:5]:
+        print('||=||' * 100)
+        print_pico(batch)
+
