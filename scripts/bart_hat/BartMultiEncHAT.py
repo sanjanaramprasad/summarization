@@ -145,6 +145,18 @@ class BartMultiEncHAT(BartPretrainedModel):
         #print(added_enc_outputs)
         return added_enc_outputs
 
+
+    def _get_sentence_vectors(self, encoder_output_list, bos_id_list):
+        vector_list = []
+        for enc_output, bos_ids in list(zip(encoder_output_list, bos_id_list)):
+            enc_output = enc_output[0]
+            sentence_output = [enc_output[i] for i in bos_id_list[0]]
+            vector_list += sentence_output
+        
+        vector_list = torch.as_tensor([vector_list], device = encoder_output_list[0].device)
+        return vector_list
+
+
     def _get_attention_masks_OR(self, 
         attention_mask_list ):
 
@@ -287,14 +299,13 @@ class BartMultiEncHAT(BartPretrainedModel):
         encoder_outputs_list = [each for each in encoder_outputs if each is not None]
         attention_masks = [attention_mask_col0, attention_mask_col1, attention_mask_col2, attention_mask_col3, attention_mask_col4]
         attn_mask_list = [each for each in attention_masks if each is not None]
+        bos_id_list = [bos_ids_col0, bos_ids_col1, bos_ids_col2, bos_ids_col3, bos_ids_col4]
 
         if len(encoder_outputs_list) == 1:
             encoder_outputs = encoder_outputs_list[0]
             attn_mask = attn_mask_list[0] if attn_mask_list else None
 
-        else:
-    
-            if encoder_combination_type =='addition':
+        elif encoder_combination_type =='addition':
                 average_flag = False
                 encoder_outputs = self._get_sum_encoder_outputs(
                         encoder_outputs_list,
@@ -317,6 +328,9 @@ class BartMultiEncHAT(BartPretrainedModel):
                         [attn_mask for attn_mask in attn_mask_list if not (attn_mask is None)]
 
                     )
+
+        elif encoder_combination_type =='HAT':
+            sentence_representations = self._get_sentence_vectors(encoder_outputs_list, bos_id_list)
 
         decoder_outputs = self.decoder(
             input_ids=decoder_input_ids,
