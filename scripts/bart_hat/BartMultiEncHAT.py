@@ -20,6 +20,7 @@ class BartEncoderShared():
         enc.layers = own_layers
 
 
+
 class BartMultiEncHAT(BartPretrainedModel):
     base_model_prefix = "model"
     _keys_to_ignore_on_load_missing = [r"final_logits_bias", r"lm_head\.weight"]
@@ -38,6 +39,16 @@ class BartMultiEncHAT(BartPretrainedModel):
 
         self.encoder = BartEncoder(config, self.shared)
         
+        self.hierarchical_attention = BartAttention(
+            embed_dim=self.embed_dim,
+            num_heads=config.encoder_attention_heads,
+            dropout=config.attention_dropout,
+        )
+        self.hierarchical_attention_layer_norm = nn.LayerNorm(self.embed_dim)
+        self.fc1_ha = nn.Linear(self.embed_dim, config.encoder_ffn_dim)
+        self.fc2_ha = nn.Linear(config.encoder_ffn_dim, self.embed_dim)
+        self.final_layer_norm = nn.LayerNorm(self.embed_dim)
+
 
         
         self.decoder = BartDecoder(config,self.shared)
@@ -146,6 +157,32 @@ class BartMultiEncHAT(BartPretrainedModel):
         return added_enc_outputs
 
 
+    def hierarchical_attn_forward(self, hidden_states, attention_mask, layer_head_mask = None, output_attentions = False):
+
+        residual = hidden_states
+        attention_mask = _expand_mask(attention_mask, torch.float32, hidden_states.shape[2])
+        hidden_states, attn_weights, _ = self.hierarchical_attention(
+            hidden_states = hidden_states,
+            attention_mask = attention_mask,
+            layer_head_mask = layer_head_mask,
+            output_attentions = output_attentions
+        )
+        hidden_states = nn.functional.dropout(hidden_states, p=self.dropout, training=self.training)
+        hidden_states = residual + hidden_states
+        hidden_states = self.hierarchical_attention_layer_norm(hidden_states)
+
+        residual = hidden_states
+        hidden_states = self.activation_fn(self.fc1_ha(hidden_states))
+        hidden_states = nn.functional.dropout(hidden_states, p=self.activation_dropout, training=self.training)
+        hidden_states = self.fc2_ha(hidden_states)
+        hidden_states = nn.functional.dropout(hidden_states, p=self.dropout, training=self.training)
+        hidden_states = residual + hidden_states
+        hidden_states = self.final_layer_norm(hidden_states)
+
+        return BaseModelOutput(
+            last_hidden_state=hidden_states, hidden_states=None, attentions=None
+        )
+
     def _get_sentence_vectors(self, encoder_output_list, bos_id_list):
         vector_list = []
         vector_attention = []
@@ -179,7 +216,7 @@ class BartMultiEncHAT(BartPretrainedModel):
         #vector_attention = [1] * len(vector_list)
         vector_attention = torch.as_tensor([vector_attention])
         print("SENT VECT,  SENT ATTN", vector_list.shape, vector_attention.shape)
-        return vector_list
+        return vector_list, vector_attention
 
 
     def _get_attention_masks_OR(self, 
@@ -355,15 +392,20 @@ class BartMultiEncHAT(BartPretrainedModel):
                     )
 
         elif encoder_combination_type =='HAT':
-            print("ENC AND INP SHAPE", encoder_outputs_list[0][0].shape, input_ids_col0.shape)
+            #print("ENC AND INP SHAPE", encoder_outputs_list[0][0].shape, input_ids_col0.shape)
             #print("BOS ID shape", bos_id_list[0].shape)
-            print(bos_id_list[0])
+            #print(bos_id_list[0])
             
             if True:
                 print("CHECKING BOS")
                 print([input_ids_col0[0][i] for i in bos_id_list[0][0].tolist() if i != -2])
             
-            #sentence_representations = self._get_sentence_vectors(encoder_outputs_list, bos_id_list)
+            sentence_representations, sentence_attention_mask = self._get_sentence_vectors(encoder_outputs_list, bos_id_list)
+            print("SENT REPR", sentence_representations)
+            print("SENT ATTN", sentence_attention_mask)
+
+            encoder_outputs_HAT = self.hierarchical_attn_forward(sentence_representations, sentence_attention_mask)
+            print(encoder_outputs_HAT[0].shape)
 
         if labels is not None:
             if decoder_input_ids is None:
