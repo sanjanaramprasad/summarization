@@ -49,7 +49,7 @@ def encode_sentences(tokenizer, df, source_keys, targets, max_length=1024, pad_t
         encoded_dict = run_bart(snippet.strip())
         bos_ids = [i for i, t in enumerate(encoded_dict['input_ids'].tolist()[0]) if t == bos_id]
         pad_len = max_length - len(bos_ids)
-        pad_list = [1] *  pad_len
+        pad_list = [-2] *  pad_len
         bos_ids = bos_ids + pad_list
         bos_ids = torch.tensor([bos_ids])
         return encoded_dict, bos_ids

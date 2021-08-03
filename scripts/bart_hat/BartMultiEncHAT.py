@@ -148,12 +148,37 @@ class BartMultiEncHAT(BartPretrainedModel):
 
     def _get_sentence_vectors(self, encoder_output_list, bos_id_list):
         vector_list = []
+        vector_attention = []
+        max_len = encoder_output_list[0][0][0].shape[0]
+        embed_dim = encoder_output_list[0][0][0].shape[1]
+
+        print("MAX LEN", max_len)
+        print("EMB DIM", embed_dim)
+
         for enc_output, bos_ids in list(zip(encoder_output_list, bos_id_list)):
-            enc_output = enc_output[0]
-            sentence_output = [enc_output[i] for i in bos_id_list[0]]
+            enc_last_hidden_state = enc_output[0]
+            enc_last_hs_vectors = enc_last_hidden_state[0]
+            #sentence_output = [enc_output[i] for i in bos_id_list[0] if i != -2]
+            sentence_output = []
+            print(bos_ids, enc_last_hs_vectors.shape)
+            for i in bos_ids[0].tolist():
+                #print(i)
+                if i != -2:
+                    #print(i)
+                    sentence_output.append(enc_last_hs_vectors[i].tolist())
             vector_list += sentence_output
         
-        vector_list = torch.as_tensor([vector_list], device = encoder_output_list[0].device)
+        vector_list_pad = [0] * embed_dim
+        vector_attn_pad = [0] * (max_len - len(vector_list))
+        vector_attention = [1] * len(vector_list)
+
+        vector_list += [vector_list_pad] * (max_len - len(vector_list))
+        vector_attention += vector_attn_pad
+
+        vector_list = torch.as_tensor([vector_list], device = encoder_output_list[0][0].device)
+        #vector_attention = [1] * len(vector_list)
+        vector_attention = torch.as_tensor([vector_attention])
+        print("SENT VECT,  SENT ATTN", vector_list.shape, vector_attention.shape)
         return vector_list
 
 
@@ -330,7 +355,15 @@ class BartMultiEncHAT(BartPretrainedModel):
                     )
 
         elif encoder_combination_type =='HAT':
-            sentence_representations = self._get_sentence_vectors(encoder_outputs_list, bos_id_list)
+            print("ENC AND INP SHAPE", encoder_outputs_list[0][0].shape, input_ids_col0.shape)
+            #print("BOS ID shape", bos_id_list[0].shape)
+            print(bos_id_list[0])
+            
+            if True:
+                print("CHECKING BOS")
+                print([input_ids_col0[0][i] for i in bos_id_list[0][0].tolist() if i != -2])
+            
+            #sentence_representations = self._get_sentence_vectors(encoder_outputs_list, bos_id_list)
 
         if labels is not None:
             if decoder_input_ids is None:
