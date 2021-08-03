@@ -41,7 +41,8 @@ class BartMultiEncHAT(BartPretrainedModel):
 
         
         self.decoder = BartDecoder(config,self.shared)
-
+        self.register_buffer("final_logits_bias", torch.zeros((1, self.shared.num_embeddings)))
+        self.lm_head = nn.Linear(config.d_model, self.shared.num_embeddings, bias=False)
         self.init_weights()
 
 
