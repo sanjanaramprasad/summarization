@@ -116,3 +116,7 @@ class BartMultiEncHATTester():
         print("OUTPUTS", outputs[0])
         print('=' *13)
         
+
+obj = BartMultiEncHATTester()
+obj.test_model_forward_bart_encoder(encoder_combination_type = 'addition')
+#obj.test_model_forward_bart_encoder_loop_per_study(encoder_combination_type = 'linearize')
