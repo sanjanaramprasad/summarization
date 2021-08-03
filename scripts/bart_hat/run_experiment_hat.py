@@ -261,7 +261,7 @@ def main(encoder_combination_type = 'addition', layer_share = False):
     max_len = 1024
 
     
-    summary_data = make_data(tokenizer, SummaryDataModule, path = '/home/ramprasad.sa', files = files, max_len = max_len)
+    summary_data = make_data(tokenizer, SummaryDataModule, path = '/home/sanjana', files = files, max_len = max_len)
 
 
 

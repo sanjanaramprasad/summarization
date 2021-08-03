@@ -83,8 +83,8 @@ class BartMultiEncHATTester():
                 punchline_effect_input_ids, punchline_effect_attention_masks, punchline_effect_bos_ids = get_data(data)
 
         print("forward...") 
-
-        outputs = self(
+        tgt_ids = data[-1]
+        outputs = model(
             input_ids_col0 = population_input_ids,
             input_ids_col1 = interventions_input_ids,
             input_ids_col2 = outcomes_input_ids, 
@@ -101,12 +101,11 @@ class BartMultiEncHATTester():
             bos_ids_col3 = punchline_text_bos_ids,
             bos_ids_col4 = punchline_effect_bos_ids,
             labels = tgt_ids,
-            encoder_combination_type = self.encoder_combination_type,
-            decoder_input_ids = None,
+            encoder_combination_type = encoder_combination_type,
             use_cache = False,
         )
 
-        tgt_ids = data[-1]
+        #tgt_ids = data[-1]
         optimizer = optim.Adam(model.parameters())
         loss = outputs[0]
         #ce_loss_fct = torch.nn.CrossEntropyLoss(ignore_index=tokenizer.pad_token_id)

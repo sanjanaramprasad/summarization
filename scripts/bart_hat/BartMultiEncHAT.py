@@ -332,6 +332,12 @@ class BartMultiEncHAT(BartPretrainedModel):
         elif encoder_combination_type =='HAT':
             sentence_representations = self._get_sentence_vectors(encoder_outputs_list, bos_id_list)
 
+        if labels is not None:
+            if decoder_input_ids is None:
+                decoder_input_ids = shift_tokens_right(
+                    labels, self.config.pad_token_id, self.config.decoder_start_token_id
+                )
+
         decoder_outputs = self.decoder(
             input_ids=decoder_input_ids,
             attention_mask=decoder_attention_mask,

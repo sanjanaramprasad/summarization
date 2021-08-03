@@ -123,7 +123,7 @@ class SummaryDataModule(pl.LightningDataModule):
         self.validate = preprocess_df(self.validate, preprocess_keys)
         self.test = preprocess_df(self.test, preprocess_keys)
 
-    def setup(self):
+    def setup(self, stage):
         self.train = encode_sentences(self.tokenizer, 
                                       self.train,
                                         ['population', 
@@ -236,7 +236,7 @@ if __name__ == '__main__':
     
                                     
     
-    summary_data = make_data(tokenizer, SummaryDataModule, data_type = 'robo', path = '/Users/sanjana', files = data_files, max_len = 1024)
+    summary_data = make_data(tokenizer, SummaryDataModule, data_type = 'robo', path = '/home/sanjana', files = data_files, max_len = 1024)
     print(summary_data.train)
     summary_data.setup()
     it = summary_data.val_dataloader()
@@ -253,14 +253,14 @@ if __name__ == '__main__':
         print([population_input_ids.tolist()[0][i] for i in list(batch[2])[0]])
 
 
-        '''interventions_input_ids = batch[2] if len(batch) >3 else None
-        interventions_attention_masks = batch[3] if len(batch) >3 else None
+        interventions_input_ids = batch[3] if len(batch) >3 else None
+        interventions_attention_masks = batch[4] if len(batch) >3 else None
         print("INTERVENTIONS")
         print(" ".join([tokenizer.decode(w, skip_special_tokens=True, clean_up_tokenization_spaces=True) for w in interventions_input_ids]))
         print(interventions_attention_masks)
 
 
-        outcomes_input_ids = batch[4] if len(batch) >5 else None
+        '''outcomes_input_ids = batch[4] if len(batch) >5 else None
         outcomes_attention_masks = batch[5] if len(batch) >5 else None
 
         print("OUTCOMES")
