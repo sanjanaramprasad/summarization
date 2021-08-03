@@ -50,6 +50,38 @@ def freeze_params(model):
     for layer in model.parameters():
         layer.requires_grade = False
 
+
+
+def get_data(data):
+        population_input_ids = data[0] 
+        population_attention_masks = data[1] 
+        population_bos_ids = data[2]
+
+        interventions_input_ids = data[3] 
+        interventions_attention_masks = data[4] 
+        interventions_bos_ids = data[5]
+
+
+        outcomes_input_ids = data[6] 
+        outcomes_attention_masks = data[7] 
+        outcomes_bos_ids = data[8]
+
+        punchline_text_input_ids = data[9] 
+        punchline_text_attention_masks = data[10] 
+        punchline_text_bos_ids = data[11]
+
+        punchline_effect_input_ids = data[12] 
+        punchline_effect_attention_masks = data[13] 
+        punchline_effect_bos_ids = data[14]
+
+
+        return population_input_ids, population_attention_masks, population_bos_ids,\
+                interventions_input_ids, interventions_attention_masks, interventions_bos_ids,\
+                outcomes_input_ids, outcomes_attention_masks, outcomes_bos_ids,\
+                punchline_text_input_ids, punchline_text_attention_masks, punchline_text_bos_ids,\
+                punchline_effect_input_ids, punchline_effect_attention_masks, punchline_effect_bos_ids
+
+
 class LitModel(pl.LightningModule):
     # Instantiate the model
     def __init__(self, learning_rate, tokenizer, model, encoder_combination_type, layer_share ,freeze_encoder, freeze_embeds, max_len):
@@ -57,6 +89,7 @@ class LitModel(pl.LightningModule):
         self.tokenizer = tokenizer
         self.model = model
         self.model._make_duplicate_encoders(layer_share = layer_share)
+        model._make_duplicate_decoder_layer_attns()
         self.model.resize_token_embeddings(len(self.tokenizer))
         self.learning_rate = learning_rate
         self.freeze_encoder = freeze_encoder
@@ -97,26 +130,11 @@ class LitModel(pl.LightningModule):
 
     def training_step(self, batch, batch_idx):
     
-        population_input_ids = batch[0] 
-        population_attention_masks = batch[1] 
-        population_bos_ids = batch[2]
-
-        interventions_input_ids = batch[3] 
-        interventions_attention_masks = batch[4] 
-        interventions_bos_ids = batch[5]
-
-
-        outcomes_input_ids = batch[6] 
-        outcomes_attention_masks = batch[7] 
-        outcomes_bos_ids = batch[8]
-
-        punchline_text_input_ids = batch[9] 
-        punchline_text_attention_masks = batch[10] 
-        punchline_text_bos_ids = batch[11]
-
-        punchline_effect_input_ids = batch[12] 
-        punchline_effect_attention_masks = batch[13] 
-        punchline_effect_bos_ids = batch[14]
+        population_input_ids, population_attention_masks, population_bos_ids,\
+                interventions_input_ids, interventions_attention_masks, interventions_bos_ids,\
+                outcomes_input_ids, outcomes_attention_masks, outcomes_bos_ids,\
+                punchline_text_input_ids, punchline_text_attention_masks, punchline_text_bos_ids,\
+                punchline_effect_input_ids, punchline_effect_attention_masks, punchline_effect_bos_ids = get_data(batch)
 
         # Load the data into variables
         #src_ids, src_mask = batch[0], batch[1]
@@ -162,26 +180,11 @@ class LitModel(pl.LightningModule):
 
 
     def validation_step(self, batch, batch_idx):
-        population_input_ids = batch[0] 
-        population_attention_masks = batch[1] 
-        population_bos_ids = batch[2]
-
-        interventions_input_ids = batch[3] 
-        interventions_attention_masks = batch[4] 
-        interventions_bos_ids = batch[5]
-
-
-        outcomes_input_ids = batch[6] 
-        outcomes_attention_masks = batch[7] 
-        outcomes_bos_ids = batch[8]
-
-        punchline_text_input_ids = batch[9] 
-        punchline_text_attention_masks = batch[10] 
-        punchline_text_bos_ids = batch[11]
-
-        punchline_effect_input_ids = batch[12] 
-        punchline_effect_attention_masks = batch[13] 
-        punchline_effect_bos_ids = batch[14]
+        population_input_ids, population_attention_masks, population_bos_ids,\
+                interventions_input_ids, interventions_attention_masks, interventions_bos_ids,\
+                outcomes_input_ids, outcomes_attention_masks, outcomes_bos_ids,\
+                punchline_text_input_ids, punchline_text_attention_masks, punchline_text_bos_ids,\
+                punchline_effect_input_ids, punchline_effect_attention_masks, punchline_effect_bos_ids = get_data(batch)
 
         tgt_ids = batch[-1]
         # Shift the decoder tokens right (but NOT the tgt_ids)
@@ -269,7 +272,7 @@ def main(encoder_combination_type = 'addition', layer_share = False):
 
     ####################### Model loading and training ##########################
     freeze_encoder = False
-    freeze_embeds = True
+    freeze_embeds = False
     learning_rate = 3e-5 
     max_epochs = 12
     bart_model = BartMultiEncHAT.from_pretrained('facebook/bart-base') 
@@ -307,4 +310,4 @@ def main(encoder_combination_type = 'addition', layer_share = False):
 
 
 if __name__ == '__main__': 
-    main(encoder_combination_type = 'addition')
+    main(encoder_combination_type = 'HAT')
