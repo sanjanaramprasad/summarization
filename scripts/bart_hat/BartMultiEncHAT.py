@@ -1,13 +1,26 @@
 import torch
 import torch.nn.functional as F
 from torch import nn
-from transformers.models.bart.modeling_bart import BartEncoder, BartDecoder, BartPretrainedModel, shift_tokens_right, BartAttention, _expand_mask
+from transformers.models.bart.modeling_bart import BartEncoder, BartDecoder, BartPretrainedModel, shift_tokens_right, BartDecoderLayer, BartLearnedPositionalEmbedding, BartAttention, _make_causal_mask, _expand_mask
 from transformers.models.bart.configuration_bart import BartConfig
 from transformers.modeling_outputs import BaseModelOutput,Seq2SeqLMOutput,Seq2SeqModelOutput, Seq2SeqQuestionAnsweringModelOutput,Seq2SeqSequenceClassifierOutput
 from transformers.modeling_utils import PreTrainedModel
 from torch.nn import CrossEntropyLoss, MSELoss
 import copy
+import torch.nn.functional as F
+from typing import Optional, Tuple
 from transformers.activations import ACT2FN
+import random
+from transformers.modeling_outputs import (
+    BaseModelOutput,
+    BaseModelOutputWithPastAndCrossAttentions,
+    CausalLMOutputWithCrossAttentions,
+    Seq2SeqLMOutput,
+    Seq2SeqModelOutput,
+    Seq2SeqQuestionAnsweringModelOutput,
+    Seq2SeqSequenceClassifierOutput,
+)
+
 
 class BartDecoderLayerMulti(nn.Module):
 
@@ -21,6 +34,7 @@ class BartDecoderLayerMulti(nn.Module):
             dropout=config.attention_dropout,
             is_decoder=True,
         )
+        self.self_attn_layer_norm = nn.LayerNorm(self.embed_dim)
         self.hierarchical_attn = BartAttention(
             embed_dim=self.embed_dim,
             num_heads=config.decoder_attention_heads,
@@ -145,7 +159,7 @@ class BartDecoderLayerMulti(nn.Module):
             cross_attn_past_key_value = past_key_value[10:12] if past_key_value is not None else None
             hidden_states_4, cross_attn_present_key_value_4 = cross_attn_block(self.encoder_attn_4, encoder_hidden_states4, encoder_attention_mask4, hidden_states, cross_attn_past_key_value)
 
-            hiddens_states_all = hidden_states_0 + hidden_states_1 + hidden_states_2 + hidden_states_3 + hidden_states_4
+            hidden_states_all = hidden_states_0 + hidden_states_1 + hidden_states_2 + hidden_states_3 + hidden_states_4
 
             hidden_states = hidden_states_all + residual
             hidden_states = F.dropout(hidden_states, p=self.dropout, training=self.training)
@@ -156,7 +170,7 @@ class BartDecoderLayerMulti(nn.Module):
             ####HIERARCH ATTN BLOCK
             residual = hidden_states
             hierarchical_attn_past_key_value = past_key_value[12:14] if past_key_value is not None else None
-            hidden_states_all, hierarchical_attn_weights, hierarchical_attn_present_key_value = self.self_hierarchical_attn(
+            hidden_states_all, hierarchical_attn_weights, hierarchical_attn_present_key_value = self.hierarchical_attn(
                                                                                                         hidden_states=hidden_states,
                                                                                                         key_value_states=sentence_hidden_states,
                                                                                                         attention_mask=sentence_attention_mask,
@@ -523,6 +537,10 @@ class BartMultiEncHAT(BartPretrainedModel):
             BartEncoderShared(self.encoder2, self.encoder.layers[:3], 3)
             BartEncoderShared(self.encoder3, self.encoder.layers[:3], 3)
             BartEncoderShared(self.encoder4, self.encoder.layers[:3], 3)
+
+    def _make_duplicate_decoder_layer_attns(self):
+        for each_layer in self.decoder.layers:
+            each_layer._make_duplicate_attns()
         
     def get_input_embeddings(self):
         return self.shared 
@@ -858,10 +876,7 @@ class BartMultiEncHAT(BartPretrainedModel):
                     labels, self.config.pad_token_id, self.config.decoder_start_token_id
                 )
 
-        decoder_outputs = self.decoder(
-            input_ids=decoder_input_ids,
-            attention_mask=decoder_attention_mask,
-            
+        decoder_outputs = self.decoder( 
             input_ids=decoder_input_ids,
             attention_mask=decoder_attention_mask,
             
@@ -903,9 +918,9 @@ class BartMultiEncHAT(BartPretrainedModel):
             decoder_hidden_states=decoder_outputs.hidden_states,
             decoder_attentions=decoder_outputs.attentions,
             cross_attentions=decoder_outputs.cross_attentions,
-            encoder_last_hidden_state=encoder_outputs.last_hidden_state,
-            encoder_hidden_states=encoder_outputs.hidden_states,
-            encoder_attentions=encoder_outputs.attentions,
+            encoder_last_hidden_state=None,
+            encoder_hidden_states=None,
+            encoder_attentions=None,
             )
             
         lm_logits = self.lm_head(outputs[0]) + self.final_logits_bias
@@ -914,11 +929,11 @@ class BartMultiEncHAT(BartPretrainedModel):
             loss_fct = CrossEntropyLoss()
             masked_lm_loss = loss_fct(lm_logits.view(-1, self.config.vocab_size), labels.view(-1))
 
-        if not return_dict:
-            output = (lm_logits,) + outputs[1:]
-            return ((masked_lm_loss,) + output) if masked_lm_loss is not None else output
+        #if not return_dict:
+        output = (lm_logits,) + outputs[1:]
+        return ((masked_lm_loss,) + output) if masked_lm_loss is not None else output
         
-        return Seq2SeqLMOutput(
+        '''return Seq2SeqLMOutput(
             loss=masked_lm_loss,
             logits=lm_logits,
             past_key_values=outputs.past_key_values,
@@ -928,7 +943,7 @@ class BartMultiEncHAT(BartPretrainedModel):
             encoder_last_hidden_state=outputs.encoder_last_hidden_state,
             encoder_hidden_states=outputs.encoder_hidden_states,
             encoder_attentions=outputs.encoder_attentions,
-        )
+        )'''
 
     @staticmethod
     def _reorder_cache(past, beam_idx):

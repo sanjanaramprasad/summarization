@@ -16,7 +16,7 @@ def make_data(tokenizer, SummaryDataModule,  data_type = 'robo', path = '/home/s
         test_file = path + '/summarization/datasets/%s'%(files[2])
 
     data_files = [train_file, dev_file, test_file]
-    summary_data = SummaryDataModule(tokenizer, data_files = data_files,  batch_size = 1, max_len = 256)
+    summary_data = SummaryDataModule(tokenizer, data_files = data_files,  batch_size = 1, max_len = 1024)
     summary_data.prepare_data()
     return summary_data
 
@@ -66,6 +66,7 @@ class BartMultiEncHATTester():
         #from DataToTextProcessor_encoder import SummaryDataModule
         model = BartMultiEncHAT.from_pretrained('facebook/bart-base')
         model._make_duplicate_encoders(layer_share = False)
+        model._make_duplicate_decoder_layer_attns()
         model.resize_token_embeddings(len(tokenizer))
         print("Loading Data ...")
         summary_data = make_data(tokenizer, SummaryDataModule, path = '/home/sanjana', files = ['train_rr_data.csv', 
