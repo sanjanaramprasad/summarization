@@ -1,7 +1,7 @@
 import torch
 import torch.nn.functional as F
 from torch import nn
-from transformers.models.bart.modeling_bart import BartEncoder, BartDecoder, BartPretrainedModel, shift_tokens_right
+from transformers.models.bart.modeling_bart import BartEncoder, BartDecoder, BartPretrainedModel, shift_tokens_right, BartAttention, _expand_mask
 from transformers.models.bart.configuration_bart import BartConfig
 from transformers.modeling_outputs import BaseModelOutput,Seq2SeqLMOutput,Seq2SeqModelOutput, Seq2SeqQuestionAnsweringModelOutput,Seq2SeqSequenceClassifierOutput
 from transformers.modeling_utils import PreTrainedModel
@@ -40,14 +40,14 @@ class BartMultiEncHAT(BartPretrainedModel):
         self.encoder = BartEncoder(config, self.shared)
         
         self.hierarchical_attention = BartAttention(
-            embed_dim=self.embed_dim,
+            embed_dim=config.d_model,
             num_heads=config.encoder_attention_heads,
             dropout=config.attention_dropout,
         )
-        self.hierarchical_attention_layer_norm = nn.LayerNorm(self.embed_dim)
-        self.fc1_ha = nn.Linear(self.embed_dim, config.encoder_ffn_dim)
-        self.fc2_ha = nn.Linear(config.encoder_ffn_dim, self.embed_dim)
-        self.final_layer_norm = nn.LayerNorm(self.embed_dim)
+        self.hierarchical_attention_layer_norm = nn.LayerNorm(config.d_model)
+        self.fc1_ha = nn.Linear(config.d_model, config.encoder_ffn_dim)
+        self.fc2_ha = nn.Linear(config.encoder_ffn_dim, config.d_model)
+        self.final_layer_norm = nn.LayerNorm(config.d_model)
 
 
         
@@ -160,7 +160,7 @@ class BartMultiEncHAT(BartPretrainedModel):
     def hierarchical_attn_forward(self, hidden_states, attention_mask, layer_head_mask = None, output_attentions = False):
 
         residual = hidden_states
-        attention_mask = _expand_mask(attention_mask, torch.float32, hidden_states.shape[2])
+        attention_mask = _expand_mask(attention_mask, torch.float32, hidden_states.shape[1])
         hidden_states, attn_weights, _ = self.hierarchical_attention(
             hidden_states = hidden_states,
             attention_mask = attention_mask,
