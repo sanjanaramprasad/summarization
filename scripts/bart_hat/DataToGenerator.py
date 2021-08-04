@@ -19,26 +19,36 @@ import numpy as np
 import subprocess 
 
 
-def get_data(data):
-        population_input_ids = data[0] 
+def get_data(data, device):
+        population_input_ids = data[0]
+        population_input_ids = population_input_ids.to(device)
         population_attention_masks = data[1] 
+        population_attention_masks = population_attention_masks.to(device)
         population_bos_ids = data[2]
 
         interventions_input_ids = data[3] 
+        interventions_input_ids = interventions_input_ids.to(device)
         interventions_attention_masks = data[4] 
+        interventions_attention_masks = interventions_attention_masks.to(device)
         interventions_bos_ids = data[5]
 
 
         outcomes_input_ids = data[6] 
+        outcomes_input_ids = outcomes_input_ids.to(device)
         outcomes_attention_masks = data[7] 
+        outcomes_attention_masks = outcomes_attention_masks.to(device)
         outcomes_bos_ids = data[8]
 
         punchline_text_input_ids = data[9] 
+        punchline_text_input_ids = punchline_text_input_ids.to(device)
         punchline_text_attention_masks = data[10] 
+        punchline_text_attention_masks = punchline_text_attention_masks.to(device)
         punchline_text_bos_ids = data[11]
 
         punchline_effect_input_ids = data[12] 
+        punchline_effect_input_ids = punchline_effect_input_ids.to(device)
         punchline_effect_attention_masks = data[13] 
+        punchline_effect_attention_masks = punchline_effect_attention_masks.to(device)
         punchline_effect_bos_ids = data[14]
 
 
@@ -197,7 +207,7 @@ class Data2TextGenerator(GenerationMixin):
                 interventions_input_ids, interventions_attention_masks, interventions_bos_ids,\
                 outcomes_input_ids, outcomes_attention_masks, outcomes_bos_ids,\
                 punchline_text_input_ids, punchline_text_attention_masks, punchline_text_bos_ids,\
-                punchline_effect_input_ids, punchline_effect_attention_masks, punchline_effect_bos_ids = get_data(data)
+                punchline_effect_input_ids, punchline_effect_attention_masks, punchline_effect_bos_ids = get_data(batch, device)
 
         max_length = max_length if max_length is not None else self.config.max_length
         num_beams = num_beams if num_beams is not None else self.config.num_beams
@@ -232,7 +242,7 @@ class Data2TextGenerator(GenerationMixin):
                 batch, device, model_kwargs)
 
         encoder_input_ids = input_ids if self.config.is_encoder_decoder else None
-        input_list = [each for each in [input_ids_col0, input_ids_col1, input_ids_col2, input_ids_col3, input_ids_col4,] \
+        input_list = [each for each in [population_input_ids, interventions_input_ids,outcomes_input_ids, punchline_text_input_ids, punchline_effect_input_ids] \
                             if not(each is None)]
         encoder_input_ids = torch.cat(input_list, 0)
         if self.config.is_encoder_decoder:
@@ -253,7 +263,7 @@ class Data2TextGenerator(GenerationMixin):
 
             if "decoder_input_ids" in model_kwargs:
                     input_ids = model_kwargs.pop("decoder_input_ids")
-                else:
+            else:
                     input_ids = self._prepare_decoder_input_ids_for_generation(
                         input_ids, decoder_start_token_id=decoder_start_token_id, bos_token_id=bos_token_id
                     )
@@ -295,7 +305,7 @@ class Data2TextGenerator(GenerationMixin):
         stopping_criteria = self._get_stopping_criteria(max_length=max_length, max_time=max_time)
         is_greedy_gen_mode = True
         if is_greedy_gen_mode:
-            #print("GREEDY SEARCHING")
+            ##print("GREEDY SEARCHING", model_kwargs)
             if num_return_sequences > 1:
                 raise ValueError(
                     f"num_return_sequences has to be 1, but is {num_return_sequences} when doing greedy search."

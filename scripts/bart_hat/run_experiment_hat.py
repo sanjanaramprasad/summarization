@@ -157,7 +157,7 @@ class LitModel(pl.LightningModule):
         num_gpus = torch.cuda.device_count() if torch.cuda.is_available() else 1
         num_steps = len(self.train_dataloader()) * 12 / num_gpus / 1 / 1
         scheduler = get_linear_schedule_with_warmup(
-            optimizer, num_warmup_steps=600, num_training_steps=num_steps
+            optimizer, num_warmup_steps=6000, num_training_steps=num_steps
         )
         return [optimizer], [{"scheduler": scheduler, "interval": "step"}]
         '''optimizer = NoamOpt(768, 2, 4000,

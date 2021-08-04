@@ -69,7 +69,7 @@ def sample_scorer(sample, model, tokenizer, nbeams, min_len, r_penalty, l_penalt
     
     print("Sample scoring")
     for each in sample:
-        outputs = generator.generate(each, num_beams = nbeams,  max_length = 400, min_length = min_len, repetition_penalty = r_penalty, length_penalty = l_penalty, encoder_combination_type = 'self_attn', device = device)
+        outputs = generator.generate(each, num_beams = nbeams,  max_length = 400, min_length = min_len, repetition_penalty = r_penalty, length_penalty = l_penalty, encoder_combination_type = 'HAT', device = device)
         model_output = ' '.join([tokenizer.decode(w, skip_special_tokens=True, clean_up_tokenization_spaces=True) for w in outputs])
         target = ' '.join([tokenizer.decode(w, skip_special_tokens=True, clean_up_tokenization_spaces=True) for w in each[-1]])
         if model_output.strip():
@@ -175,7 +175,7 @@ def run_inference( encoder_combination_strategy, checkpoint_file, parameter_look
 if __name__ =='__main__':
     checkpoint_file = ''
     output_file = ''
-    encoder_combination_strategy = "addition"
+    encoder_combination_strategy = "HAT"
     if not output_file:
         with torch.no_grad():
             model_outputs, targets,  rougeScore, meteorScore, bleuScore = run_inference( encoder_combination_strategy, checkpoint_file)

@@ -930,21 +930,21 @@ class BartMultiEncHAT(BartPretrainedModel):
             loss_fct = CrossEntropyLoss()
             masked_lm_loss = loss_fct(lm_logits.view(-1, self.config.vocab_size), labels.view(-1))
 
-        #if not return_dict:
-        output = (lm_logits,) + outputs[1:]
-        return ((masked_lm_loss,) + output) if masked_lm_loss is not None else output
+        if not return_dict:
+            output = (lm_logits,) + outputs[1:]
+            return ((masked_lm_loss,) + output) if masked_lm_loss is not None else output
         
-        '''return Seq2SeqLMOutput(
+        return Seq2SeqLMOutput(
             loss=masked_lm_loss,
             logits=lm_logits,
             past_key_values=outputs.past_key_values,
             decoder_hidden_states=outputs.decoder_hidden_states,
             decoder_attentions=outputs.decoder_attentions,
             cross_attentions=outputs.cross_attentions,
-            encoder_last_hidden_state=outputs.encoder_last_hidden_state,
-            encoder_hidden_states=outputs.encoder_hidden_states,
-            encoder_attentions=outputs.encoder_attentions,
-        )'''
+            encoder_last_hidden_state=None,
+            encoder_hidden_states=None,
+            encoder_attentions=None,
+        )
 
     @staticmethod
     def _reorder_cache(past, beam_idx):
@@ -953,4 +953,62 @@ class BartMultiEncHAT(BartPretrainedModel):
             reordered_past += (tuple(past_state.index_select(0, beam_idx) for past_state in layer_past),)
         return reordered_past  
 
-        
+    def prepare_inputs_for_generation(
+        self,
+        decoder_input_ids,
+        past=None,
+        attention_mask_col0 = None,
+        attention_mask_col1 = None,
+        attention_mask_col2 = None,
+        attention_mask_col3 = None,
+        attention_mask_col4 = None,
+        bos_ids_col0 = None,
+        bos_ids_col1 = None,
+        bos_ids_col2 = None,
+        bos_ids_col3 = None,
+        bos_ids_col4 = None,
+        head_mask=None,
+        use_cache=None,
+        encoder_outputs_col0 =None,
+        encoder_outputs_col1 = None,
+        encoder_outputs_col2 = None,
+        encoder_outputs_col3 = None,
+        encoder_outputs_col4 = None,
+
+        encoder_combination_type = 'HAT',
+        decoder_attention_mask = None,
+        **kwargs
+    ):
+        # cut decoder_input_ids if past is used
+        if past is not None:
+            decoder_input_ids = decoder_input_ids[:, -1:]
+
+        return {
+            "input_ids_col0": None,
+            "input_ids_col1": None,
+            "input_ids_col2": None,
+            "input_ids_col3": None,
+            "input_ids_col4": None,
+            "encoder_outputs_col0": encoder_outputs_col0,
+            "encoder_outputs_col1": encoder_outputs_col1,
+            "encoder_outputs_col2": encoder_outputs_col2,
+            "encoder_outputs_col3": encoder_outputs_col3,
+            "encoder_outputs_col4": encoder_outputs_col4,
+            "past_key_values": past,
+            "decoder_input_ids": decoder_input_ids,
+            "attention_mask_col0": attention_mask_col0,
+            "attention_mask_col1": attention_mask_col1,
+            "attention_mask_col2": attention_mask_col2,
+            "attention_mask_col3": attention_mask_col3,
+            "attention_mask_col4": attention_mask_col4,
+            "bos_ids_col0" : bos_ids_col0,
+            "bos_ids_col1" : bos_ids_col1,
+            "bos_ids_col2" : bos_ids_col2,
+            "bos_ids_col3" : bos_ids_col3,
+            "bos_ids_col4" : bos_ids_col4,
+            "encoder_combination_type": encoder_combination_type,
+            "decoder_attention_mask": decoder_attention_mask,
+            "head_mask": head_mask,
+            "use_cache": use_cache,  # change this to avoid caching (presumably for debugging)
+            
+        }        

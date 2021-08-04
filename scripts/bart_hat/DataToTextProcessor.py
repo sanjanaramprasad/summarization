@@ -15,50 +15,71 @@ import random
 import re
 import argparse
 
+#inc = 0
 
 def encode_sentences(tokenizer, df, source_keys, targets, max_length=1024, pad_to_max_length=True, return_tensors="pt"):
-
     
     def run_bart(snippet):
         encoded_dict = tokenizer(
           snippet,
           max_length=max_length,
-          padding="max_length" if pad_to_max_length else None,
           truncation=True,
-          return_tensors=return_tensors,
           add_prefix_space = True
         )
         return encoded_dict
 
-    bos_id = run_bart("[BOS]")
-    bos_id = bos_id['input_ids'].tolist()[0][1]
-    print("BOS ID", bos_id)
-
+    #bos_id = run_bart("[BOS]")
+    #bos_id = bos_id['input_ids'].tolist()[0][1]
+    #print("BOS ID", bos_id)
     def get_encoding(snippet, key):
-        #print(snippet)
+        all_input_ids = []
+        all_attention_masks = []
+        encoded_dict = {}
+
+        
         if isinstance(snippet, list):
-            snippet_processed = []
-            for each in snippet:
-                enc = run_bart(each)
-                if len(enc['input_ids']) < 1000:
-                    ##key = "attribute"
-                    each = "[BOS]" + each
-                    snippet_processed.append(each)
-            snippet = " ".join(snippet_processed)
-        #print(snippet)
-        encoded_dict = run_bart(snippet.strip())
-        bos_ids = [i for i, t in enumerate(encoded_dict['input_ids'].tolist()[0]) if t == bos_id]
-        pad_len = max_length - len(bos_ids)
-        pad_list = [-2] *  pad_len
-        bos_ids = bos_ids + pad_list
-        bos_ids = torch.tensor([bos_ids])
+            #snippet = [each for each in snippet if each.strip()]
+            enc = run_bart(snippet)
+            batch_ids = enc['input_ids']
+            
+            for each_list in batch_ids:
+                all_input_ids += each_list
+
+            for each_list in enc['attention_mask']:
+                all_attention_masks += each_list
+
+            if len(all_input_ids) > max_length:
+                all_input_ids = all_input_ids[:1023] + [2]
+                #inc += 1
+                all_attention_masks = all_attention_masks[:1024]
+                return None
+
+            pad_len = max_length - len(all_input_ids)
+            pad_list = [1] * pad_len
+            attention_mask = [0] * pad_len
+            all_input_ids += pad_list
+            all_attention_masks += attention_mask
+            
+            input_ids = torch.as_tensor([all_input_ids])
+            attention_mask = torch.as_tensor([all_attention_masks])
+            encoded_dict["input_ids"] = input_ids
+            encoded_dict["attention_mask"] = attention_mask
+            ##print(encoded_dict) 
+             
+            bos_ids = [i for i, t in enumerate(encoded_dict['input_ids'].tolist()[0]) if t == 0]
+            pad_len = max_length - len(bos_ids)
+            pad_list = [-2] *  pad_len
+            bos_ids = bos_ids + pad_list
+            bos_ids = torch.tensor([bos_ids])
+            ##print(input_ids.shape, attention_mask.shape, bos_ids.shape)
+            assert(input_ids.shape == attention_mask.shape ==bos_ids.shape)
         return encoded_dict, bos_ids
 
     encoded_sentences = {}
 
     target_ids = []
-
-    
+   
+    skip_ids = []    
     for key in source_keys:
         id_key = '%s_ids'%key
         attention_mask_key = '%s_attention_masks'%key
@@ -70,32 +91,38 @@ def encode_sentences(tokenizer, df, source_keys, targets, max_length=1024, pad_t
             encoded_sentences[bos_key] = []
         df_val = list(df[key].values)
         #print(df_val[:10])
-        for sentences in df_val:
+        for sent_id, sentences in enumerate(df_val):
             sentences = eval(sentences)
-            sentence_encoding, bos_ids = get_encoding(sentences, key)
-            encoded_sentences[id_key].append(sentence_encoding['input_ids'])
-            encoded_sentences[attention_mask_key].append(sentence_encoding['attention_mask'])
-            encoded_sentences[bos_key].append(bos_ids)
+            return_val = get_encoding(sentences, key)
+            if return_val:
+                sentence_encoding, bos_ids = return_val[0], return_val[1]
+                encoded_sentences[id_key].append(sentence_encoding['input_ids'])
+                encoded_sentences[attention_mask_key].append(sentence_encoding['attention_mask'])
+                encoded_sentences[bos_key].append(bos_ids)
+            else:
+                skip_ids.append(sent_id)
 
-    for tgt_sentence in targets:
-        encoded_dict = tokenizer(
+    for tgt_id, tgt_sentence in enumerate(list(targets.values)):
+        if tgt_id not in skip_ids:
+            encoded_dict = tokenizer(
               tgt_sentence,
               max_length=max_length,
               padding="max_length" if pad_to_max_length else None,
               truncation=True,
               return_tensors=return_tensors,
               add_prefix_space = True
-        )
-        # Shift the target ids to the right
-        #shifted_target_ids = shift_tokens_right(encoded_dict['input_ids'], tokenizer.pad_token_id)
-        target_ids.append(encoded_dict['input_ids'])
+            )
+            # Shift the target ids to the right
+            #shifted_target_ids = shift_tokens_right(encoded_dict['input_ids'], tokenizer.pad_token_id)
+            target_ids.append(encoded_dict['input_ids'])
     
+    #print(inc)
     for key in list(encoded_sentences.keys()):
         encoded_sentences[key] = torch.cat(encoded_sentences[key], dim = 0)
         
     target_ids = torch.cat(target_ids, dim = 0)
     encoded_sentences['labels'] = target_ids
-
+    print(encoded_sentences[key].shape)
     return encoded_sentences
 
 def preprocess_df(df, keys):
