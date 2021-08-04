@@ -55,6 +55,7 @@ tokenizer = BartTokenizer.from_pretrained('facebook/bart-base', bos_token="<s>",
                                                     eos_token="</s>",
                                                     pad_token = "<pad>")
 
+tokenizer.add_tokens(additional_special_tokens)
 
 
 class BartMultiEncHATTester():

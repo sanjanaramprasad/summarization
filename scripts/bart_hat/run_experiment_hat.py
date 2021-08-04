@@ -23,6 +23,7 @@ from transformers.generation_logits_process import (
     TopKLogitsWarper,
     TopPLogitsWarper,
 )
+from transformers.optimization import get_linear_schedule_with_warmup, AdamW
 from transformers.generation_utils import GenerationMixin
 from transformers.generation_stopping_criteria import (
     MaxLengthCriteria,
@@ -43,6 +44,33 @@ from pytorch_lightning.loggers import TensorBoardLogger
 import os
 import pytorch_lightning as pl
 
+
+class NoamOpt:
+    "Optim wrapper that implements rate."
+    def __init__(self, model_size, factor, warmup, optimizer):
+        self.optimizer = optimizer
+        self._step = 0
+        self.warmup = warmup
+        self.factor = factor
+        self.model_size = model_size
+        self._rate = 0
+
+    def step(self):
+        "Update parameters and rate"
+        self._step += 1
+        rate = self.rate()
+        for p in self.optimizer.param_groups:
+            p['lr'] = rate
+        self._rate = rate
+        self.optimizer.step()
+
+    def rate(self, step = None):
+        "Implement `lrate` above"
+        if step is None:
+            step = self._step
+        return self.factor * \
+            (self.model_size ** (-0.5) *
+            min(step ** (-0.5), step * self.warmup ** (-1.5)))
 
 def freeze_params(model):
     ''' Function that takes a model as input (or part of a model) and freezes the layers for faster training
@@ -89,7 +117,7 @@ class LitModel(pl.LightningModule):
         self.tokenizer = tokenizer
         self.model = model
         self.model._make_duplicate_encoders(layer_share = layer_share)
-        model._make_duplicate_decoder_layer_attns()
+        self.model._make_duplicate_decoder_layer_attns()
         self.model.resize_token_embeddings(len(self.tokenizer))
         self.learning_rate = learning_rate
         self.freeze_encoder = freeze_encoder
@@ -124,9 +152,19 @@ class LitModel(pl.LightningModule):
   
     def configure_optimizers(self):
         print("PARAMS", self.parameters())
-        optimizer = torch.optim.Adam(self.parameters(), lr = self.learning_rate)
+        optimizer = AdamW(self.model.parameters(),
+            lr=1e-4, eps = 1e-5, betas = (0.9, 0.98))
+        num_gpus = torch.cuda.device_count() if torch.cuda.is_available() else 1
+        num_steps = len(self.train_dataloader()) * 12 / num_gpus / 1 / 1
+        scheduler = get_linear_schedule_with_warmup(
+            optimizer, num_warmup_steps=600, num_training_steps=num_steps
+        )
+        return [optimizer], [{"scheduler": scheduler, "interval": "step"}]
+        '''optimizer = NoamOpt(768, 2, 4000,
+            torch.optim.Adam(self.parameters(), lr=0, betas=(0.9, 0.98), eps=1e-5))
+        #optimizer = torch.optim.Adam(self.parameters(), lr = self.learning_rate)
         #optimizer = torch.optim.SGD(self.parameters(), lr= self.learning_rate)
-        return optimizer
+        return optimize'''
 
     def training_step(self, batch, batch_idx):
     

@@ -663,7 +663,7 @@ class BartMultiEncHAT(BartPretrainedModel):
             enc_last_hs_vectors = enc_last_hidden_state[0]
             #sentence_output = [enc_output[i] for i in bos_id_list[0] if i != -2]
             sentence_output = []
-            print(bos_ids, enc_last_hs_vectors.shape)
+            #print(bos_ids, enc_last_hs_vectors.shape)
             for i in bos_ids[0].tolist():
                 #print(i)
                 if i != -2:
@@ -680,7 +680,7 @@ class BartMultiEncHAT(BartPretrainedModel):
 
         vector_list = torch.as_tensor([vector_list], device = encoder_output_list[0][0].device)
         #vector_attention = [1] * len(vector_list)
-        vector_attention = torch.as_tensor([vector_attention])
+        #vector_attention = torch.as_tensor([vector_attention])
         #print("SENT VECT,  SENT ATTN", vector_list.shape, vector_attention.shape)
         return vector_list, vector_attention
 
@@ -867,8 +867,9 @@ class BartMultiEncHAT(BartPretrainedModel):
                 print([input_ids_col0[0][i] for i in bos_id_list[0][0].tolist() if i != -2])'''
             
             sentence_representations, sentence_attention_mask = self._get_sentence_vectors(encoder_outputs_list, bos_id_list)
+            sentence_attention_mask = torch.as_tensor([sentence_attention_mask], device = attention_mask_col0.device)
             encoder_outputs_HAT = self.hierarchical_attn_forward(sentence_representations, sentence_attention_mask)
-            
+            #print(sentence_representations, sentence_attention_mask)
 
         if labels is not None:
             if decoder_input_ids is None:

@@ -238,7 +238,7 @@ if __name__ == '__main__':
     
     summary_data = make_data(tokenizer, SummaryDataModule, data_type = 'robo', path = '/home/sanjana', files = data_files, max_len = 1024)
     print(summary_data.train)
-    summary_data.setup()
+    summary_data.setup("stage")
     it = summary_data.val_dataloader()
     batches = iter(it)
     batch = next(batches)
