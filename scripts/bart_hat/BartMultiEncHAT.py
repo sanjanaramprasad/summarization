@@ -723,6 +723,7 @@ class BartMultiEncHAT(BartPretrainedModel):
         encoder_outputs_col2 = None,
         encoder_outputs_col3 = None,
         encoder_outputs_col4 = None,
+        encoder_outputs_HAT = None,
         past_key_values=None,
         inputs_embeds=None,
         decoder_inputs_embeds=None,
@@ -865,11 +866,11 @@ class BartMultiEncHAT(BartPretrainedModel):
             '''if True:
                 print("CHECKING BOS")
                 print([input_ids_col0[0][i] for i in bos_id_list[0][0].tolist() if i != -2])'''
-            
-            sentence_representations, sentence_attention_mask = self._get_sentence_vectors(encoder_outputs_list, bos_id_list)
-            sentence_attention_mask = torch.as_tensor([sentence_attention_mask], device = attention_mask_col0.device)
-            encoder_outputs_HAT = self.hierarchical_attn_forward(sentence_representations, sentence_attention_mask)
-            #print(sentence_representations, sentence_attention_mask)
+            if not encoder_outputs_HAT:
+                sentence_representations, sentence_attention_mask = self._get_sentence_vectors(encoder_outputs_list, bos_id_list)
+                sentence_attention_mask = torch.as_tensor([sentence_attention_mask], device = attention_mask_col0.device)
+                encoder_outputs_HAT = self.hierarchical_attn_forward(sentence_representations, sentence_attention_mask)
+                #print(sentence_representations, sentence_attention_mask)
 
         if labels is not None:
             if decoder_input_ids is None:
@@ -974,6 +975,7 @@ class BartMultiEncHAT(BartPretrainedModel):
         encoder_outputs_col2 = None,
         encoder_outputs_col3 = None,
         encoder_outputs_col4 = None,
+        encoder_outputs_HAT = None,
 
         encoder_combination_type = 'HAT',
         decoder_attention_mask = None,
@@ -994,6 +996,7 @@ class BartMultiEncHAT(BartPretrainedModel):
             "encoder_outputs_col2": encoder_outputs_col2,
             "encoder_outputs_col3": encoder_outputs_col3,
             "encoder_outputs_col4": encoder_outputs_col4,
+            "encoder_outputs_HAT": encoder_outputs_HAT,
             "past_key_values": past,
             "decoder_input_ids": decoder_input_ids,
             "attention_mask_col0": attention_mask_col0,

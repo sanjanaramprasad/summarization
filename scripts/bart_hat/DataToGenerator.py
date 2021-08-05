@@ -82,6 +82,7 @@ class Data2TextGenerator(GenerationMixin):
         encoder_outputs_col2: ModelOutput = None,
         encoder_outputs_col3: ModelOutput = None,
         encoder_outputs_col4: ModelOutput = None,
+        encoder_outputs_HAT: ModelOutput = None,
         **model_kwargs,
     ) -> Tuple[torch.LongTensor, Dict[str, Any]]:
 
@@ -138,6 +139,12 @@ class Data2TextGenerator(GenerationMixin):
                     0, expanded_return_idx.to(encoder_outputs_col4.last_hidden_state.device)
                 )
                 model_kwargs["encoder_outputs_col4"] = encoder_outputs_col4
+
+            if encoder_outputs_HAT is not None:
+                encoder_outputs_HAT["last_hidden_state"] = encoder_outputs_HAT.last_hidden_state.index_select(
+                    0, expanded_return_idx.to(encoder_outputs_HAT.last_hidden_state.device)
+                )
+                model_kwargs["encoder_outputs_HAT"] = encoder_outputs_HAT
 
         return input_ids, model_kwargs
 
@@ -234,6 +241,14 @@ class Data2TextGenerator(GenerationMixin):
             model_kwargs["bos_ids_col2"] = outcomes_bos_ids
             model_kwargs["bos_ids_col3"] = punchline_text_bos_ids
             model_kwargs["bos_ids_col4"] = punchline_effect_bos_ids
+
+            encoder_output_list = [model_kwargs['encoder_outputs_col0'], model_kwargs['encoder_outputs_col1'], \
+                                    model_kwargs['encoder_outputs_col2'], model_kwargs['encoder_outputs_col3'], model_kwargs['encoder_outputs_col4']]
+            bos_id_list = [population_bos_ids, interventions_bos_ids, outcomes_bos_ids, punchline_text_bos_ids, punchline_effect_bos_ids]
+            sentence_representations, sentence_attention_mask = self.model._get_sentence_vectors(encoder_outputs_list, bos_id_list)
+            sentence_attention_mask = torch.as_tensor([sentence_attention_mask], device = attention_mask_col0.device)
+            encoder_outputs_HAT = self.model.hierarchical_attn_forward(sentence_representations, sentence_attention_mask)
+            modek_kwargs['encoder_outputs_HAT'] : ModelOutput = encoder_outputs_HAT
 
         return model_kwargs
     
