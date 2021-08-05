@@ -17,7 +17,7 @@ import argparse
 
 #inc = 0
 
-def encode_sentences(tokenizer, df, source_keys, targets, max_length=1024, pad_to_max_length=True, return_tensors="pt"):
+def encode_sentences(tokenizer, df, source_keys, target_key, max_length=1024, pad_to_max_length=True, return_tensors="pt"):
     
     def run_bart(snippet):
         encoded_dict = tokenizer(
@@ -28,15 +28,10 @@ def encode_sentences(tokenizer, df, source_keys, targets, max_length=1024, pad_t
         )
         return encoded_dict
 
-    #bos_id = run_bart("[BOS]")
-    #bos_id = bos_id['input_ids'].tolist()[0][1]
-    #print("BOS ID", bos_id)
-    def get_encoding(snippet, key):
+    def get_encoding(snippet):
         all_input_ids = []
         all_attention_masks = []
         encoded_dict = {}
-
-        
         if isinstance(snippet, list):
             #snippet = [each for each in snippet if each.strip()]
             enc = run_bart(snippet)
@@ -50,9 +45,7 @@ def encode_sentences(tokenizer, df, source_keys, targets, max_length=1024, pad_t
 
             if len(all_input_ids) > max_length:
                 all_input_ids = all_input_ids[:1023] + [2]
-                #inc += 1
                 all_attention_masks = all_attention_masks[:1024]
-                return None
 
             pad_len = max_length - len(all_input_ids)
             pad_list = [1] * pad_len
@@ -64,22 +57,19 @@ def encode_sentences(tokenizer, df, source_keys, targets, max_length=1024, pad_t
             attention_mask = torch.as_tensor([all_attention_masks])
             encoded_dict["input_ids"] = input_ids
             encoded_dict["attention_mask"] = attention_mask
-            ##print(encoded_dict) 
              
             bos_ids = [i for i, t in enumerate(encoded_dict['input_ids'].tolist()[0]) if t == 0]
             pad_len = max_length - len(bos_ids)
             pad_list = [-2] *  pad_len
             bos_ids = bos_ids + pad_list
             bos_ids = torch.tensor([bos_ids])
-            ##print(input_ids.shape, attention_mask.shape, bos_ids.shape)
             assert(input_ids.shape == attention_mask.shape ==bos_ids.shape)
         return encoded_dict, bos_ids
 
     encoded_sentences = {}
 
     target_ids = []
-   
-    skip_ids = []    
+
     for key in source_keys:
         id_key = '%s_ids'%key
         attention_mask_key = '%s_attention_masks'%key
@@ -89,34 +79,49 @@ def encode_sentences(tokenizer, df, source_keys, targets, max_length=1024, pad_t
             encoded_sentences[id_key] = []
             encoded_sentences[attention_mask_key] = []
             encoded_sentences[bos_key] = []
-        df_val = list(df[key].values)
-        #print(df_val[:10])
-        for sent_id, sentences in enumerate(df_val):
-            sentences = eval(sentences)
-            return_val = get_encoding(sentences, key)
-            if return_val:
-                sentence_encoding, bos_ids = return_val[0], return_val[1]
-                encoded_sentences[id_key].append(sentence_encoding['input_ids'])
-                encoded_sentences[attention_mask_key].append(sentence_encoding['attention_mask'])
-                encoded_sentences[bos_key].append(bos_ids)
-            else:
-                skip_ids.append(sent_id)
 
-    for tgt_id, tgt_sentence in enumerate(list(targets.values)):
-        if tgt_id not in skip_ids:
+
+    for idx, row in df.iterrows():
+        row_dict = {}
+        all_present = True
+
+        for key in source_keys:
+            id_key = '%s_ids'%key
+            attention_mask_key = '%s_attention_masks'%key
+            bos_key = "%s_bos_ids"%key
+            if key not in row_dict:
+                row_dict[id_key] = []
+                row_dict[attention_mask_key] = []
+                row_dict[bos_key] = []
+
+
+            sentences_key = row[key]
+            sentences_key = eval(sentences_key)
+            sentences_key = [each for each in sentences_key if each.strip()]
+            if sentences_key:
+                sentence_encoding, bos_ids = get_encoding(sentences_key)
+
+                row_dict[id_key].append(sentence_encoding['input_ids'])
+                row_dict[attention_mask_key].append(sentence_encoding['attention_mask'])
+                row_dict[bos_key].append(bos_ids)
+            else:
+                all_present = False
+
+        if all_present:
+            for k , v in row_dict.items():
+                encoded_sentences[k] += v
+
+            target_sentence = row[target_key]
             encoded_dict = tokenizer(
-              tgt_sentence,
-              max_length=max_length,
-              padding="max_length" if pad_to_max_length else None,
-              truncation=True,
-              return_tensors=return_tensors,
-              add_prefix_space = True
+                target_sentence,
+                max_length=max_length,
+                padding="max_length" if pad_to_max_length else None,
+                truncation=True,
+                return_tensors=return_tensors,
+                add_prefix_space = True
             )
-            # Shift the target ids to the right
-            #shifted_target_ids = shift_tokens_right(encoded_dict['input_ids'], tokenizer.pad_token_id)
             target_ids.append(encoded_dict['input_ids'])
-    
-    #print(inc)
+
     for key in list(encoded_sentences.keys()):
         encoded_sentences[key] = torch.cat(encoded_sentences[key], dim = 0)
         
@@ -150,7 +155,7 @@ class SummaryDataModule(pl.LightningDataModule):
         self.validate = preprocess_df(self.validate, preprocess_keys)
         self.test = preprocess_df(self.test, preprocess_keys)
 
-    def setup(self, stage):
+    def setup(self):
         self.train = encode_sentences(self.tokenizer, 
                                       self.train,
                                         ['population', 
@@ -158,7 +163,7 @@ class SummaryDataModule(pl.LightningDataModule):
                                         'outcomes',
                                         'punchline_text',
                                         'punchline_effect'], 
-                                        self.train['SummaryConclusions'],
+                                        'SummaryConclusions',
                                         max_length = self.max_len)
         self.validate = encode_sentences(self.tokenizer, 
                                         self.validate,
@@ -167,7 +172,7 @@ class SummaryDataModule(pl.LightningDataModule):
                                         'outcomes',
                                         'punchline_text',
                                         'punchline_effect'], 
-                                        self.validate['SummaryConclusions'],
+                                        'SummaryConclusions',
                                         max_length = self.max_len)
         self.test = encode_sentences(self.tokenizer, 
                                     self.test,
@@ -176,7 +181,7 @@ class SummaryDataModule(pl.LightningDataModule):
                                         'outcomes',
                                         'punchline_text',
                                         'punchline_effect'], 
-                                        self.test['SummaryConclusions'],
+                                        'SummaryConclusions',
                                         max_length = self.max_len)
 
     def train_dataloader(self, data_type = 'robo'):
@@ -251,7 +256,7 @@ def make_data(tokenizer, SummaryDataModule,  data_type = 'robo', path = '/Users/
     return summary_data
 
 if __name__ == '__main__':
-    additional_special_tokens = ["[BOS]", "<sep>"]
+    additional_special_tokens = [ "<sep>"]
     tokenizer = BartTokenizer.from_pretrained('facebook/bart-base', bos_token="<s>", 
                                                     eos_token="</s>", 
                                                     pad_token = "<pad>")
@@ -263,9 +268,9 @@ if __name__ == '__main__':
     
                                     
     
-    summary_data = make_data(tokenizer, SummaryDataModule, data_type = 'robo', path = '/home/sanjana', files = data_files, max_len = 1024)
+    summary_data = make_data(tokenizer, SummaryDataModule, data_type = 'robo', path = '/Users/sanjana', files = data_files, max_len = 1024)
     print(summary_data.train)
-    summary_data.setup("stage")
+    summary_data.setup()
     it = summary_data.val_dataloader()
     batches = iter(it)
     batch = next(batches)
@@ -275,15 +280,15 @@ if __name__ == '__main__':
         population_attention_masks = batch[1] if len(batch) >1 else None
         print("POPULATION")
         print(population_input_ids)
-        print(" ".join([tokenizer.decode(w, skip_special_tokens=True, clean_up_tokenization_spaces=True) for w in population_input_ids]))
+        print(" ".join([tokenizer.decode(w, skip_special_tokens=False, clean_up_tokenization_spaces=True) for w in population_input_ids]))
         print(population_attention_masks)
-        print([population_input_ids.tolist()[0][i] for i in list(batch[2])[0]])
+        print(batch[2])
 
 
         interventions_input_ids = batch[3] if len(batch) >3 else None
         interventions_attention_masks = batch[4] if len(batch) >3 else None
         print("INTERVENTIONS")
-        print(" ".join([tokenizer.decode(w, skip_special_tokens=True, clean_up_tokenization_spaces=True) for w in interventions_input_ids]))
+        print(" ".join([tokenizer.decode(w, skip_special_tokens=False, clean_up_tokenization_spaces=True) for w in interventions_input_ids]))
         print(interventions_attention_masks)
 
 
