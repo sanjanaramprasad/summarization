@@ -50,7 +50,7 @@ def get_data(data):
                 punchline_text_input_ids, punchline_text_attention_masks, punchline_text_bos_ids,\
                 punchline_effect_input_ids, punchline_effect_attention_masks, punchline_effect_bos_ids
 
-additional_special_tokens = ["<sep>", "[BOS]"]
+additional_special_tokens = ["<sep>"]
 tokenizer = BartTokenizer.from_pretrained('facebook/bart-base', bos_token="<s>",
                                                     eos_token="</s>",
                                                     pad_token = "<pad>")

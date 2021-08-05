@@ -862,9 +862,9 @@ class BartMultiEncHAT(BartPretrainedModel):
             #print("BOS ID shape", bos_id_list[0].shape)
             #print(bos_id_list[0])
             
-            if True:
+            '''if True:
                 print("CHECKING BOS")
-                print([input_ids_col0[0][i] for i in bos_id_list[0][0].tolist() if i != -2])
+                print([input_ids_col0[0][i] for i in bos_id_list[0][0].tolist() if i != -2])'''
             
             sentence_representations, sentence_attention_mask = self._get_sentence_vectors(encoder_outputs_list, bos_id_list)
             sentence_attention_mask = torch.as_tensor([sentence_attention_mask], device = attention_mask_col0.device)

@@ -22,12 +22,11 @@ def make_data(tokenizer, SummaryDataModule,  data_type = 'robo', path = '/home/s
     return summary_data
 
 
-additional_special_tokens = ["<sep>", "[BOS]"]
+additional_special_tokens = ["<sep>"]
 
-tokenizer = BartTokenizer.from_pretrained('facebook/bart-base', bos_token="<s>", 
-                                                    eos_token="</s>", 
+tokenizer = BartTokenizer.from_pretrained('facebook/bart-base', bos_token="<s>",
+                                                    eos_token="</s>",
                                                     pad_token = "<pad>")
-
 tokenizer.add_tokens(additional_special_tokens) 
 files = ['train_rr_data.csv', 
                             'dev_rr_data.csv', 'test_rr_data.csv']
@@ -36,8 +35,7 @@ max_len = 1024
 
 summary_data = make_data(tokenizer, SummaryDataModule, path = '/home/sanjana', files = files, max_len = max_len)
 print(summary_data.train)
-checkpoint_file = '/home/sanjana/summarization/scripts/bart_hat/trial/epoch=7-val_loss=0.54.ckpt'
-
+checkpoint_file = '/home/sanjana/summarization/scripts/bart_hat/checkpoint_files/3e-5_HAT/epoch=8-val_loss=0.28.ckpt'
 model = LitModel.load_from_checkpoint(checkpoint_path=checkpoint_file)
 
 num_beams = 3
