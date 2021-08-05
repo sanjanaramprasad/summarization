@@ -67,7 +67,79 @@ class Data2TextGenerator(GenerationMixin):
         self.device = self.model.device
         #print(self.config.max_length)
 
+    def _expand_inputs_for_generation(
+        self,
+        input_ids: torch.LongTensor,
+        expand_size: int = 1,
+        is_encoder_decoder: bool = False,
+        attention_mask_col0: torch.LongTensor = None,
+        attention_mask_col1: torch.LongTensor = None,
+        attention_mask_col2: torch.LongTensor = None,
+        attention_mask_col3: torch.LongTensor = None,
+        attention_mask_col4: torch.LongTensor = None,
+        encoder_outputs_col0: ModelOutput = None,
+        encoder_outputs_col1: ModelOutput = None,
+        encoder_outputs_col2: ModelOutput = None,
+        encoder_outputs_col3: ModelOutput = None,
+        encoder_outputs_col4: ModelOutput = None,
+        **model_kwargs,
+    ) -> Tuple[torch.LongTensor, Dict[str, Any]]:
 
+        expanded_return_idx = (
+            torch.arange(input_ids.shape[0]).view(-1, 1).repeat(1, expand_size).view(-1).to(input_ids.device)
+        )
+        input_ids = input_ids.index_select(0, expanded_return_idx)
+
+        if "token_type_ids" in model_kwargs:
+            token_type_ids = model_kwargs["token_type_ids"]
+            model_kwargs["token_type_ids"] = token_type_ids.index_select(0, expanded_return_idx)
+
+        if attention_mask_col0 is not None:
+            model_kwargs["attention_mask_col0"] = attention_mask_col0.index_select(0, expanded_return_idx)
+        if attention_mask_col1 is not None:
+            model_kwargs["attention_mask_col1"] = attention_mask_col1.index_select(0, expanded_return_idx)
+        if attention_mask_col2 is not None:
+            model_kwargs["attention_mask_col2"] = attention_mask_col2.index_select(0, expanded_return_idx)
+        if attention_mask_col3 is not None:
+            model_kwargs["attention_mask_col3"] = attention_mask_col3.index_select(0, expanded_return_idx)
+        if attention_mask_col4 is not None:
+            model_kwargs["attention_mask_col4"] = attention_mask_col4.index_select(0, expanded_return_idx)
+
+        if True:
+            if encoder_outputs_col0 is not None:
+                encoder_outputs_col0["last_hidden_state"] = encoder_outputs_col0.last_hidden_state.index_select(
+                    0, expanded_return_idx.to(encoder_outputs_col0.last_hidden_state.device)
+                )
+                model_kwargs["encoder_outputs_col0"] = encoder_outputs_col0
+
+            if encoder_outputs_col1 is not None:
+                encoder_outputs_col1["last_hidden_state"] = encoder_outputs_col1.last_hidden_state.index_select(
+                    0, expanded_return_idx.to(encoder_outputs_col1.last_hidden_state.device)
+                )
+                model_kwargs["encoder_outputs_col1"] = encoder_outputs_col1
+
+
+            if encoder_outputs_col2 is not None:
+                encoder_outputs_col2["last_hidden_state"] = encoder_outputs_col2.last_hidden_state.index_select(
+                    0, expanded_return_idx.to(encoder_outputs_col2.last_hidden_state.device)
+                )
+                model_kwargs["encoder_outputs_col2"] = encoder_outputs_col2
+
+
+            if encoder_outputs_col3 is not None:
+                encoder_outputs_col3["last_hidden_state"] = encoder_outputs_col3.last_hidden_state.index_select(
+                    0, expanded_return_idx.to(encoder_outputs_col3.last_hidden_state.device)
+                )
+                model_kwargs["encoder_outputs_col3"] = encoder_outputs_col3
+
+
+            if encoder_outputs_col4 is not None:
+                encoder_outputs_col4["last_hidden_state"] = encoder_outputs_col4.last_hidden_state.index_select(
+                    0, expanded_return_idx.to(encoder_outputs_col4.last_hidden_state.device)
+                )
+                model_kwargs["encoder_outputs_col4"] = encoder_outputs_col4
+
+        return input_ids, model_kwargs
 
     def _prepare_attention_mask_for_generation(self, batch, device, model_kwargs):
         attention_mask_col0 = batch[1] 
@@ -303,7 +375,7 @@ class Data2TextGenerator(GenerationMixin):
         )
 
         stopping_criteria = self._get_stopping_criteria(max_length=max_length, max_time=max_time)
-        is_greedy_gen_mode = True
+        
         if is_greedy_gen_mode:
             ##print("GREEDY SEARCHING", model_kwargs)
             if num_return_sequences > 1:
@@ -314,6 +386,45 @@ class Data2TextGenerator(GenerationMixin):
             # greedy search
             return self.model.greedy_search(
                 input_ids,
+                logits_processor=logits_processor,
+                stopping_criteria=stopping_criteria,
+                pad_token_id=pad_token_id,
+                eos_token_id=eos_token_id,
+                output_scores=output_scores,
+                return_dict_in_generate=return_dict_in_generate,
+                synced_gpus=synced_gpus,
+                **model_kwargs,
+            )
+
+        elif is_beam_gen_mode:
+            #print("BEAM SEARCHING")
+            batch_size = input_ids.shape[0]
+
+            length_penalty = length_penalty if length_penalty is not None else self.config.length_penalty
+            early_stopping = early_stopping if early_stopping is not None else self.config.early_stopping
+
+            if num_return_sequences > num_beams:
+                raise ValueError("`num_return_sequences` has to be smaller or equal to `num_beams`.")
+
+            if stopping_criteria.max_length is None:
+                raise ValueError("`max_length` needs to be a stopping_criteria for now.")
+
+            beam_scorer = BeamSearchScorer(
+                batch_size=batch_size,
+                num_beams=num_beams,
+                device=self.device,
+                length_penalty=length_penalty,
+                do_early_stopping=early_stopping,
+                num_beam_hyps_to_keep=num_return_sequences,
+            )
+            # interleave with `num_beams`
+            input_ids, model_kwargs = self._expand_inputs_for_generation(
+                input_ids, expand_size=num_beams, is_encoder_decoder=self.config.is_encoder_decoder, **model_kwargs
+            )
+            ##print("BEAM SEARCH KWARGS", model_kwargs)
+            return self.model.beam_search(
+                input_ids,
+                beam_scorer,
                 logits_processor=logits_processor,
                 stopping_criteria=stopping_criteria,
                 pad_token_id=pad_token_id,
