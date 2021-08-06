@@ -225,23 +225,29 @@ def main():
     trainer.fit(model, summary_data)
 
 def inference(checkpoint_file):
-    tokenizer = BartTokenizer.from_pretrained('facebook/bart-base')
+    additional_special_tokens = ["<sep>"]
+
+    tokenizer = BartTokenizer.from_pretrained('facebook/bart-base', bos_token="<s>", 
+                                                    eos_token="</s>", 
+                                                    pad_token = "<pad>")
+
+    tokenizer.add_tokens(additional_special_tokens)
     hparams = argparse.Namespace()
     rouge = Rouge()
     hparams.freeze_encoder = True
     hparams.freeze_embeds = True
-    hparams.eval_beams = 4
+    hparams.eval_beams = 2
+    files = ['train_rr_data.csv', 
+                            'dev_rr_data.csv', 'test_rr_data.csv']
+    max_len = 1024
     model = LitModel.load_from_checkpoint(checkpoint_path=checkpoint_file)
 
-    summary_data = make_data(tokenizer, path = '/home/sanjana')
+    summary_data = make_data(tokenizer, SummaryDataModule, path = '/home/ramprasad.sa', files = files, max_len = max_len)
     summary_data.setup("stage")
     val_data = summary_data.val_dataloader(data_type = 'robo')
 
-    num_val = len(list(val_data))
-    num_val = 5
-    print("NUM EXAMPLES", num_val)
-    it = iter(val_data)
-    ind = 0
+       
+    it = iter(val_data) 
     model_out = []
     references = []
     rouge = Rouge()
@@ -254,15 +260,15 @@ def inference(checkpoint_file):
                 attention_mask=text[1],
                 use_cache=True,
                 decoder_start_token_id = tokenizer.pad_token_id,
-                num_beams= 3,
-                min_length = 70,
+                num_beams= 2,
+                min_length = 90,
                 max_length = 300,
                 early_stopping = True
         )
     
         model_output = " ".join([tokenizer.decode(w, skip_special_tokens=True, clean_up_tokenization_spaces=True) for w in generated_ids])
         target = ' '.join([tokenizer.decode(w, skip_special_tokens=True, clean_up_tokenization_spaces=True) for w in text[-1]])
-        print(target, model_output)
+        #print(target, model_output)
         references.append(target)
         model_out.append(model_output)
         met_score = round(meteor_score.meteor_score([target], model_output), 4)
@@ -273,6 +279,6 @@ def inference(checkpoint_file):
     print("METEOR", sum(meteor_scores)/len(meteor_scores))
     print("BLEU", sum(bleu_scores)/len(bleu_scores))
 if __name__ == '__main__': 
-    main()
-    #inference('/home/sanjana/roboreviewer_summarization/scripts/bart_vanilla/checkpoint_files/checkpoint_best_model/epoch=4-val_loss=0.25.ckpt')
+    #main()
+    inference('/home/ramprasad.sa/summarization/scripts/bart_text-to-text/checkpoint_files/epoch=4-val_loss=0.26.ckpt')
    
