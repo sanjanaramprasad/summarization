@@ -55,6 +55,13 @@ class BartDecoderLayerMulti(nn.Module):
             is_decoder=True,
         )
         self.encoder_attn_layer_norm = nn.LayerNorm(self.embed_dim)
+
+        self.concat_attn = BartAttention(
+            self.embed_dim * 5,
+            config.decoder_attention_heads,
+            dropout=config.attention_dropout,
+            is_decoder=True,
+        )
         
         self.fc1 = nn.Linear(self.embed_dim, config.decoder_ffn_dim)
         self.fc2 = nn.Linear(config.decoder_ffn_dim, self.embed_dim)
@@ -159,7 +166,21 @@ class BartDecoderLayerMulti(nn.Module):
             cross_attn_past_key_value = past_key_value[10:12] if past_key_value is not None else None
             hidden_states_4, cross_attn_present_key_value_4 = cross_attn_block(self.encoder_attn_4, encoder_hidden_states4, encoder_attention_mask4, hidden_states, cross_attn_past_key_value)
 
-            hidden_states_all = hidden_states_0 + hidden_states_1 + hidden_states_2 + hidden_states_3 + hidden_states_4
+            if decoder_combination == 'addition':
+                hidden_states_all = hidden_states_0 + hidden_states_1 + hidden_states_2 + hidden_states_3 + hidden_states_4
+
+            else:
+                concat_attn_past_key_value = past_key_value[12:14] if past_key_value is not None else None
+                hidden_states_concat = torch.cat([hidden_states_0, hidden_states_1, hidden_states_2, hidden_states_3, hidden_states_4], dim =2)
+                hidden_states_all, concat_attn_weights, concat_attn_present_key_value = self.concat_attn(
+                hidden_states = hidden_states_concat,
+                past_key_value = concat_attn_past_key_value,
+                attention_mask = None,
+                layer_head_mask=layer_head_mask,
+            	output_attentions=output_attentions,
+        	    )
+                hidden_states_all = F.dropout(hidden_states_all, p=self.dropout, training=self.training)
+                print(hidden_states_all.shape)
 
             hidden_states = hidden_states_all + residual
             hidden_states = F.dropout(hidden_states, p=self.dropout, training=self.training)
@@ -169,7 +190,7 @@ class BartDecoderLayerMulti(nn.Module):
 
             ####HIERARCH ATTN BLOCK
             residual = hidden_states
-            hierarchical_attn_past_key_value = past_key_value[12:14] if past_key_value is not None else None
+            hierarchical_attn_past_key_value = past_key_value[-2:] if past_key_value is not None else None
             hidden_states_all, hierarchical_attn_weights, hierarchical_attn_present_key_value = self.hierarchical_attn(
                                                                                                         hidden_states=hidden_states,
                                                                                                         key_value_states=sentence_hidden_states,
@@ -518,8 +539,6 @@ class BartMultiEncHAT(BartPretrainedModel):
         self.fc1_ha = nn.Linear(config.d_model, config.encoder_ffn_dim)
         self.fc2_ha = nn.Linear(config.encoder_ffn_dim, config.d_model)
         self.final_layer_norm = nn.LayerNorm(config.d_model)
-
-
         
         self.decoder = BartDecoderMulti(config,self.shared)
         self.register_buffer("final_logits_bias", torch.zeros((1, self.shared.num_embeddings)))
