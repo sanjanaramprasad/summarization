@@ -62,6 +62,7 @@ class BartDecoderLayerMulti(nn.Module):
             dropout=config.attention_dropout,
             is_decoder=True,
         )
+        self.concat_proj = nn.Linear(self.embed_dim*5, self.embed_dim)
         
         self.fc1 = nn.Linear(self.embed_dim, config.decoder_ffn_dim)
         self.fc2 = nn.Linear(config.decoder_ffn_dim, self.embed_dim)
@@ -96,7 +97,7 @@ class BartDecoderLayerMulti(nn.Module):
         past_key_value: Optional[Tuple[torch.Tensor]] = None,
         output_attentions: Optional[bool] = False,
         use_cache: Optional[bool] = True,
-	    decoder_combination = 'addition'
+	    decoder_combination = 'hierarchical'
     ):
         """
         Args:
@@ -179,8 +180,7 @@ class BartDecoderLayerMulti(nn.Module):
                 layer_head_mask=layer_head_mask,
             	output_attentions=output_attentions,
         	    )
-                hidden_states_all = F.dropout(hidden_states_all, p=self.dropout, training=self.training)
-                print(hidden_states_all.shape)
+                hidden_states_all = self.concat_proj(hidden_states_all)
 
             hidden_states = hidden_states_all + residual
             hidden_states = F.dropout(hidden_states, p=self.dropout, training=self.training)
