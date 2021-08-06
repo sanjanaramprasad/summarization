@@ -1,9 +1,10 @@
-
+import pandas as pd
+from DataToTextProcessor import SummaryDataModule
 import transformers
 import torch.optim as optim
 import torch
 from torch.utils.data import DataLoader, TensorDataset, random_split, RandomSampler, Dataset
-import pandas as pd
+#import pandas as pd
 import numpy as np
 from transformers import BartTokenizer, BartForCausalLM, BartForConditionalGeneration, BeamSearchScorer, LogitsProcessorList, MinLengthLogitsProcessor, TopKLogitsWarper, TemperatureLogitsWarper
 from transformers.generation_beam_search import BeamScorer, BeamSearchScorer
@@ -39,7 +40,7 @@ import random
 import re
 import argparse
 from pytorch_lightning.loggers import TensorBoardLogger
-from DataToTextProcessor import SummaryDataModule
+##from DataToTextProcessor import SummaryDataModule
 
 
 
@@ -71,7 +72,7 @@ class BartForConditionalGenerationTester():
         return outputs, loss 
 
 
-def make_data(tokenizer, SummaryDataModule,  data_type = 'robo', path = '/home/sanjana', files = ['robo_train_sep.csv', 'robo_dev_sep.csv', 'robo_test_sep.csv'], max_len = 1024):
+def make_data(tokenizer, SummaryDataModule,  data_type = 'robo', path = '/home/ramprasad.sa', files = ['robo_train_sep.csv', 'robo_dev_sep.csv', 'robo_test_sep.csv'], max_len = 1024):
     if data_type == 'robo':
         train_file = path + '/summarization/datasets/%s'%(files[0])
         dev_file = path + '/summarization/datasets/%s'%(files[1])
@@ -100,7 +101,7 @@ tokenizer.add_tokens(additional_special_tokens)
 files = ['train_rr_data.csv', 
                             'dev_rr_data.csv', 'test_rr_data.csv']
 max_len = 1024                                       
-summary_data = make_data(tokenizer, SummaryDataModule, path = '/home/sanjana', files = files, max_len = max_len)
+summary_data = make_data(tokenizer, SummaryDataModule, path = '/home/ramprasad.sa', files = files, max_len = max_len)
 bart_model = BartForConditionalGeneration.from_pretrained('facebook/bart-base')    
 bart_model.resize_token_embeddings(len(tokenizer))
 #hparams = argparse.Namespace()
@@ -110,10 +111,10 @@ eval_beams = 4
 obj = BartForConditionalGenerationTester(bart_model, tokenizer)
 #bart_model.resize_token_embeddings(len(self.tokenizer))
 print("Making data")
-summary_data = make_data(tokenizer, path = '/home/sanjana')
+#summary_data = make_data(tokenizer, path = '/home/ramprasad.sa')
 summary_data.prepare_data()
 summary_data.setup("stage")
-train_data = summary_data.train_dataloader(data_type = 'robo')
+train_data = summary_data.train_dataloader()
 it = iter(train_data)
 batch = next(it)
 print(obj.forward(batch))

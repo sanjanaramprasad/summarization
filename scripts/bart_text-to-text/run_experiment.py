@@ -172,7 +172,7 @@ class LitModel(pl.LightningModule):
 
         
 
-def make_data(tokenizer, SummaryDataModule,  data_type = 'robo', path = '/home/sanjana', files = ['robo_train_sep.csv', 'robo_dev_sep.csv', 'robo_test_sep.csv'], max_len = 1024):
+def make_data(tokenizer, SummaryDataModule,  data_type = 'robo', path = '/home/ramprasad.sa', files = ['robo_train_sep.csv', 'robo_dev_sep.csv', 'robo_test_sep.csv'], max_len = 1024):
     if data_type == 'robo':
         train_file = path + '/summarization/datasets/%s'%(files[0])
         dev_file = path + '/summarization/datasets/%s'%(files[1])
@@ -201,7 +201,7 @@ def main():
     max_len = 1024
 
     
-    summary_data = make_data(tokenizer, SummaryDataModule, path = '/home/sanjana', files = files, max_len = max_len)
+    summary_data = make_data(tokenizer, SummaryDataModule, path = '/home/ramprasad.sa', files = files, max_len = max_len)
     bart_model = BartForConditionalGeneration.from_pretrained('facebook/bart-base')    
     bart_model.resize_token_embeddings(len(tokenizer))
     #hparams = argparse.Namespace()

@@ -156,7 +156,7 @@ class SummaryDataModule(pl.LightningDataModule):
         self.validate = preprocess_df(self.validate, preprocess_keys)
         self.test = preprocess_df(self.test, preprocess_keys)
 
-    def setup(self):
+    def setup(self, stage):
         self.train = encode_sentences(self.tokenizer, 
                                       self.train,
                                         ['Abstract'], 
@@ -207,7 +207,7 @@ class SummaryDataModule(pl.LightningDataModule):
 
 
 
-def make_data(tokenizer, SummaryDataModule,  data_type = 'robo', path = '/Users/sanjana', files = ['robo_train_sep.csv', 'robo_dev_sep.csv', 'robo_test_sep.csv'], max_len = 256):
+def make_data(tokenizer, SummaryDataModule,  data_type = 'robo', path = '/home/ramprasad.sa', files = ['robo_train_sep.csv', 'robo_dev_sep.csv', 'robo_test_sep.csv'], max_len = 256):
     if data_type == 'robo':
         train_file = path + '/summarization/datasets/%s'%(files[0])
         dev_file = path + '/summarization/datasets/%s'%(files[1])
@@ -233,7 +233,7 @@ if __name__ == '__main__':
     
                                     
     
-    summary_data = make_data(tokenizer, SummaryDataModule, data_type = 'robo', path = '/Users/sanjana', files = data_files, max_len = 1024)
+    summary_data = make_data(tokenizer, SummaryDataModule, data_type = 'robo', path = '/home/ramprasad.sa', files = data_files, max_len = 1024)
     print(summary_data.train)
     summary_data.setup()
     it = summary_data.val_dataloader()
