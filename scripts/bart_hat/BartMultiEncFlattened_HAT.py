@@ -51,6 +51,15 @@ class BartMultiEncFlatHAT(BartPretrainedModel):
         enc_concat_dim = 256 * 13
 
         self.encoder = BartEncoder(config, self.shared)
+
+        self.encoder_attn_concat = BartAttention(
+            config.d_model * 5,
+            config.encoder_attention_heads,
+            dropout=config.attention_dropout,
+            is_decoder=False,
+        )
+        self.encoder_attn_concat_norm = nn.LayerNorm(config.d_model * 5)
+
         
         self.hierarchical_attention = BartAttention(
             embed_dim=config.d_model,
@@ -58,6 +67,8 @@ class BartMultiEncFlatHAT(BartPretrainedModel):
             dropout=config.attention_dropout,
         )
         self.hierarchical_attention_layer_norm = nn.LayerNorm(config.d_model)
+
+        self.concat_proj = nn.Linear(self.embed_dim*5, self.embed_dim)
         self.fc1_ha = nn.Linear(config.d_model, config.encoder_ffn_dim)
         self.fc2_ha = nn.Linear(config.encoder_ffn_dim, config.d_model)
         self.final_layer_norm = nn.LayerNorm(config.d_model)
