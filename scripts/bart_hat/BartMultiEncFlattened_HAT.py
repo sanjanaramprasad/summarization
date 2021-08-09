@@ -68,7 +68,7 @@ class BartMultiEncFlatHAT(BartPretrainedModel):
         )
         self.hierarchical_attention_layer_norm = nn.LayerNorm(config.d_model)
 
-        self.concat_proj = nn.Linear(self.embed_dim*5, self.embed_dim)
+        self.concat_proj = nn.Linear(config.d_model*5, config.d_model)
         self.fc1_ha = nn.Linear(config.d_model, config.encoder_ffn_dim)
         self.fc2_ha = nn.Linear(config.encoder_ffn_dim, config.d_model)
         self.final_layer_norm = nn.LayerNorm(config.d_model)
