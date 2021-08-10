@@ -612,7 +612,7 @@ class BartMultiEncFlatHAT(BartPretrainedModel):
             last_hidden_state=hidden_states, hidden_states=None, attentions=None
         )
 
-    def _get_self_attn(self, encoder_outputs_concat, attention_mask):
+    def _get_self_attn(self, encoder_outputs_concat, attention_mask, encoder_outputs_list = None):
         residual = encoder_outputs_concat[0]
 
         ##### Self Attention Block ####
@@ -622,7 +622,36 @@ class BartMultiEncFlatHAT(BartPretrainedModel):
                 layer_head_mask=None,
                 output_attentions=False,
                 )
+
+        encoder_contexts = torch.chunk(attn_encoder_outputs_concat, 5, dim = 2)
+        all_encoder_vectors = []
+
+        for i, enc_i in enumerate(encoder_outputs_list):
+            encoder_vectors_diff = []
+            encoder_vectors_mult = []
+            context_i = encoder_contexts[i]
+            print("ENCODER NUM : ", i)
+            for j in range(0, len(encoder_contexts)):
+                context_j = encoder_contexts[j]
+                if i != j:
+                    diff = torch.subtract(enc_i, context_j)
+                    mult = torch.mul(enc_i, context_j)
+                    encoder_vectors_diff.append(diff)
+                    encoder_vectors_mult.append(mult)
+                    print("CONTEXTS : ", j)
+            print('=' * 13)
+            
+            e_vect = [enc_i] + encoder_vectors_diff + encoder_vectors_mult
+            #e_vect = torch.cat(e_vect,2)
+            all_encoder_vectors += e_vect
+        
+        all_encoder_vectors = torch.cat(all_encoder_vectors, dim = 2)
+
+
+
         attn_encoder_outputs_concat = F.dropout(attn_encoder_outputs_concat, p=self.dropout, training=self.training)
+
+
         hidden_states = attn_encoder_outputs_concat + residual
         hidden_states = self.encoder_attn_concat_norm(hidden_states)
         hidden_states = self.concat_proj(hidden_states)
@@ -851,7 +880,7 @@ class BartMultiEncFlatHAT(BartPretrainedModel):
 
                     )
             attention_mask = _expand_mask(attn_mask, torch.float32, tgt_len=encoder_outputs_concat[0].shape[1])
-            encoder_outputs = self._get_self_attn(encoder_outputs_concat, attention_mask)
+            encoder_outputs = self._get_self_attn(encoder_outputs_concat, attention_mask, encoder_outputs_list)
             attn_mask = None
             
 
