@@ -466,9 +466,13 @@ class BartMultiEncFlatHAT(BartPretrainedModel):
         self.hierarchical_attention_layer_norm = nn.LayerNorm(config.d_model)
 
         self.concat_proj = nn.Linear(config.d_model*5, config.d_model)
-        self.fc1_ha = nn.Linear(config.d_model, config.encoder_ffn_dim)
-        self.fc2_ha = nn.Linear(config.encoder_ffn_dim, config.d_model)
-        self.final_layer_norm = nn.LayerNorm(config.d_model)
+
+        self.fc1_sa = nn.Linear(config.d_model * 45 , config.d_model * 20)
+        self.fc2_sa = nn.Linear(config.d_model * 20, config.d_model * 10)
+        self.fc3_sa = nn.Linear(config.d_model * 10, config.d_model )
+        self.final_layer_norm_sa = nn.LayerNorm(config.d_model)
+        self.activation_fn_fcn = ACT2FN["relu"]
+        self.activation_dropout = config.activation_dropout
         
         self.decoder = BartDecoderMulti(config,self.shared)
         self.register_buffer("final_logits_bias", torch.zeros((1, self.shared.num_embeddings)))
@@ -632,7 +636,6 @@ class BartMultiEncFlatHAT(BartPretrainedModel):
             encoder_vectors_diff = []
             encoder_vectors_mult = []
             context_i = encoder_contexts[i]
-            print("ENCODER NUM : ", i)
             for j in range(0, len(encoder_contexts)):
                 context_j = encoder_contexts[j]
                 if i != j:
@@ -640,13 +643,9 @@ class BartMultiEncFlatHAT(BartPretrainedModel):
                     mult = torch.mul(enc_i, context_j)
                     encoder_vectors_diff.append(diff)
                     encoder_vectors_mult.append(mult)
-                    print("CONTEXTS : ", j, )
-            print('=' * 13)
             
             e_vect = [enc_i] + encoder_vectors_diff + encoder_vectors_mult
-            #e_vect = torch.cat(e_vect,2)
-            print(len(e_vect), torch.cat(e_vect, dim = 2).shape)
-            print('***' * 13)
+            
             all_encoder_vectors += e_vect
         
         all_encoder_vectors = torch.cat(all_encoder_vectors, dim = 2)
@@ -660,7 +659,13 @@ class BartMultiEncFlatHAT(BartPretrainedModel):
         #hidden_states = attn_encoder_outputs_concat + residual
         #hidden_states = self.encoder_attn_concat_norm(hidden_states)
         #print("HIDDEN STATES", hidden_states.shape)
-        hidden_states = self.concat_proj(hidden_states)
+        hidden_states = self.activation_fn_fcn(self.fc1_sa(all_encoder_vectors))
+        hidden_states = F.dropout(hidden_states, p=self.activation_dropout, training=self.training)
+        hidden_states = self.activation_fn_fcn(self.fc2_sa(hidden_states))
+        hidden_states = F.dropout(hidden_states, p=self.activation_dropout, training=self.training)
+        hidden_states = self.activation_fn_fcn(self.fc3_sa(hidden_states))
+        hidden_states = F.dropout(hidden_states, p=self.activation_dropout, training=self.training)
+        hidden_states = self.final_layer_norm_sa(hidden_states)
 
         encoder_outputs = BaseModelOutput(
                 last_hidden_state=hidden_states,
