@@ -35,10 +35,10 @@ max_len = 1024
 
 summary_data = make_data(tokenizer, SummaryDataModule, path = '/home/sanjana', files = files, max_len = max_len)
 print(summary_data.train)
-checkpoint_file = '/home/sanjana/summarization/scripts/bart_hat/checkpoint_files/3e-5_HAT/epoch=8-val_loss=0.28.ckpt'
+checkpoint_file = '/home/sanjana/summarization/scripts/bart_hat/checkpoint_files/3e-5_HAT/final_checkpoint/epoch=11-val_loss=0.28.ckpt'
 model = LitModel.load_from_checkpoint(checkpoint_path=checkpoint_file)
 
-num_beams = 3
+num_beams = 2
 min_len = 90
 repetition_penalty = 2.0
 length_penalty = 2.0

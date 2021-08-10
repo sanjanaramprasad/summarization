@@ -140,6 +140,7 @@ class BartDecoderLayerMulti(nn.Module):
             # add cross-attn to positions 3,4 of present_key_value tuple
             present_key_value = present_key_value + cross_attn_present_key_value
             ####HIERARCH ATTN BLOCK
+            ##print("HIERARCH")
             residual = hidden_states
             hierarchical_attn_past_key_value = past_key_value[-2:] if past_key_value is not None else None
             hidden_states_all, hierarchical_attn_weights, hierarchical_attn_present_key_value = self.hierarchical_attn(
@@ -627,6 +628,7 @@ class BartMultiEncFlatHAT(BartPretrainedModel):
         all_encoder_vectors = []
 
         for i, enc_i in enumerate(encoder_outputs_list):
+            enc_i = enc_i[0]
             encoder_vectors_diff = []
             encoder_vectors_mult = []
             context_i = encoder_contexts[i]
@@ -634,26 +636,30 @@ class BartMultiEncFlatHAT(BartPretrainedModel):
             for j in range(0, len(encoder_contexts)):
                 context_j = encoder_contexts[j]
                 if i != j:
-                    diff = torch.subtract(enc_i, context_j)
+                    diff = torch.sub(enc_i, context_j)
                     mult = torch.mul(enc_i, context_j)
                     encoder_vectors_diff.append(diff)
                     encoder_vectors_mult.append(mult)
-                    print("CONTEXTS : ", j)
+                    print("CONTEXTS : ", j, )
             print('=' * 13)
             
             e_vect = [enc_i] + encoder_vectors_diff + encoder_vectors_mult
             #e_vect = torch.cat(e_vect,2)
+            print(len(e_vect), torch.cat(e_vect, dim = 2).shape)
+            print('***' * 13)
             all_encoder_vectors += e_vect
         
         all_encoder_vectors = torch.cat(all_encoder_vectors, dim = 2)
+        
 
 
+        #print("ALL INFO SHAPE", all_encoder_vectors.shape)
 
-        attn_encoder_outputs_concat = F.dropout(attn_encoder_outputs_concat, p=self.dropout, training=self.training)
+        #attn_encoder_outputs_concat = F.dropout(attn_encoder_outputs_concat, p=self.dropout, training=self.training)
 
-
-        hidden_states = attn_encoder_outputs_concat + residual
-        hidden_states = self.encoder_attn_concat_norm(hidden_states)
+        #hidden_states = attn_encoder_outputs_concat + residual
+        #hidden_states = self.encoder_attn_concat_norm(hidden_states)
+        #print("HIDDEN STATES", hidden_states.shape)
         hidden_states = self.concat_proj(hidden_states)
 
         encoder_outputs = BaseModelOutput(

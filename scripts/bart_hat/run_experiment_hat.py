@@ -159,7 +159,8 @@ class LitModel(pl.LightningModule):
         scheduler = get_linear_schedule_with_warmup(
             optimizer, num_warmup_steps=1300, num_training_steps=num_steps
         )
-        return [optimizer], [{"scheduler": scheduler, "interval": "step"}]
+        return optimizer
+        #return optimizer], [{"scheduler": scheduler, "interval": "step"}]
         '''optimizer = NoamOpt(768, 2, 4000,
             torch.optim.Adam(self.parameters(), lr=0, betas=(0.9, 0.98), eps=1e-5))
         #optimizer = torch.optim.Adam(self.parameters(), lr = self.learning_rate)
@@ -290,6 +291,11 @@ def main(encoder_combination_type = 'HAT', layer_share = False):
 
     ############################# Data loader and data prep ####################
     additional_special_tokens = ["<sep>"]
+    '''additional_special_tokens = ['<population>', '</population>',
+                                        '<interventions>', '</interventions>',
+                                        '<outcomes>', '</outcomes>',
+                                        '<punchline_text>', '</punchline_text>',
+                                        '<punchline_effect>', '</punchline_effect>', "<sep>"]'''
 
     tokenizer = BartTokenizer.from_pretrained('facebook/bart-base', bos_token="<s>", 
                                                     eos_token="</s>", 
@@ -312,14 +318,14 @@ def main(encoder_combination_type = 'HAT', layer_share = False):
     freeze_encoder = False
     freeze_embeds = False
     learning_rate = 3e-5 
-    max_epochs = 12
+    max_epochs = 20
     bart_model = BartMultiEncHAT.from_pretrained('facebook/bart-base') 
     logger = TensorBoardLogger('tb_logs_final', name='my_model_f%s'%(encoder_combination_type))  
     model = LitModel(learning_rate = learning_rate, tokenizer = tokenizer, model = bart_model, 
                     encoder_combination_type = encoder_combination_type, layer_share = layer_share, freeze_encoder = freeze_encoder, \
                             freeze_embeds = freeze_embeds, max_len = max_len)
 
-    checkpoint = ModelCheckpoint('checkpoint_files/3e-5_%s/'%(encoder_combination_type),
+    checkpoint = ModelCheckpoint('checkpoint_files/3e-5_encoderHAT_decoderH/',
                                 filename = '{epoch}-{val_loss:.2f}',
                                 save_top_k=10,
                                 monitor = 'val_loss')

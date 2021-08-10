@@ -68,17 +68,20 @@ def sample_scorer(sample, model, tokenizer, nbeams, min_len, r_penalty, l_penalt
     rouge = Rouge()
     
     print("Sample scoring")
+    i = 0
     for each in sample:
-        outputs = generator.generate(each, num_beams = nbeams,  max_length = 400, min_length = min_len, repetition_penalty = r_penalty, length_penalty = l_penalty, encoder_combination_type = 'HAT', device = device)
+        outputs = generator.generate(each, num_beams = nbeams,  max_length = 600, min_length = min_len, repetition_penalty = r_penalty, length_penalty = l_penalty, encoder_combination_type = 'HAT', device = device)
         model_output = ' '.join([tokenizer.decode(w, skip_special_tokens=True, clean_up_tokenization_spaces=True) for w in outputs])
         target = ' '.join([tokenizer.decode(w, skip_special_tokens=True, clean_up_tokenization_spaces=True) for w in each[-1]])
         if model_output.strip():
+            print(i)
+            i += 1
             model_outputs.append(model_output)
             targets.append(target)
-            print("MO : ", model_output)
-            print('-' * 13)
-            print('TARGETS : ', target)
-            print('=' * 13)
+            ##print("MO : ", model_output)
+            ##print('-' * 13)
+            ##print('TARGETS : ', target)
+            ##print('=' * 13)
     print('='*13)
     print("Values: num_beam:%s || min_len:%s || r_penalty:%s || l_penalty:%s"%( nbeams, min_len, r_penalty, l_penalty))
     show_gpu('GPU memory usage after sample:')
@@ -97,10 +100,10 @@ def sample_scorer(sample, model, tokenizer, nbeams, min_len, r_penalty, l_penalt
 
 def parameter_search(sample,  model, tokenizer, device):
 
-        num_beams_list = [3,5]
+        num_beams_list = [2,3]
         min_lengths = [80,90]
-        repetition_penalties = [1.0, 2.0]
-        length_penalties = [1.0, 2.0]
+        repetition_penalties = [1.0]
+        length_penalties = [1.0]
         final_refs = []
         final_tgts = []
         max_rou1 = 0
@@ -129,7 +132,7 @@ def parameter_search(sample,  model, tokenizer, device):
 
 
 
-def run_inference( encoder_combination_strategy, checkpoint_file, parameter_look = True, write_results = True):
+def run_inference( encoder_combination_strategy, checkpoint_file, parameter_look = False, write_results = True):
     if encoder_combination_strategy == 'HAT':
         config = config_hierarchical_attn
 
@@ -151,13 +154,13 @@ def run_inference( encoder_combination_strategy, checkpoint_file, parameter_look
     num_val = 50
     print("NUM EXAMPLES", num_val)
     it = iter(val_data)
-    import random
-    sample_data = random.sample(list(it), num_val)
+    #import random
+    #sample_data = random.sample(list(it), num_val)
 
 
     if parameter_look:
         num_beams, min_len, repetition_penalty, length_penalty = parameter_search(sample_data, model, tokenizer, device)
-    
+        print("DONE")
     else:
         num_beams = config.num_beams
         min_len = config.min_len

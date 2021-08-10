@@ -77,6 +77,7 @@ class Data2TextGenerator(GenerationMixin):
         attention_mask_col2: torch.LongTensor = None,
         attention_mask_col3: torch.LongTensor = None,
         attention_mask_col4: torch.LongTensor = None,
+        sentence_attention_mask: torch.LongTensor = None,
         encoder_outputs_col0: ModelOutput = None,
         encoder_outputs_col1: ModelOutput = None,
         encoder_outputs_col2: ModelOutput = None,
@@ -105,6 +106,8 @@ class Data2TextGenerator(GenerationMixin):
             model_kwargs["attention_mask_col3"] = attention_mask_col3.index_select(0, expanded_return_idx)
         if attention_mask_col4 is not None:
             model_kwargs["attention_mask_col4"] = attention_mask_col4.index_select(0, expanded_return_idx)
+        if sentence_attention_mask is not None:
+            model_kwargs["sentence_attention_mask"] = sentence_attention_mask.index_select(0, expanded_return_idx)
 
         if True:
             if encoder_outputs_col0 is not None:
@@ -245,11 +248,12 @@ class Data2TextGenerator(GenerationMixin):
             encoder_output_list = [model_kwargs['encoder_outputs_col0'], model_kwargs['encoder_outputs_col1'], \
                                     model_kwargs['encoder_outputs_col2'], model_kwargs['encoder_outputs_col3'], model_kwargs['encoder_outputs_col4']]
             bos_id_list = [population_bos_ids, interventions_bos_ids, outcomes_bos_ids, punchline_text_bos_ids, punchline_effect_bos_ids]
-            sentence_representations, sentence_attention_mask = self.model._get_sentence_vectors(encoder_outputs_list, bos_id_list)
-            sentence_attention_mask = torch.as_tensor([sentence_attention_mask], device = attention_mask_col0.device)
+            sentence_representations, sentence_attention_mask = self.model._get_sentence_vectors(encoder_output_list, bos_id_list)
+            sentence_attention_mask = torch.as_tensor([sentence_attention_mask], device = device)
             encoder_outputs_HAT = self.model.hierarchical_attn_forward(sentence_representations, sentence_attention_mask)
-            modek_kwargs['encoder_outputs_HAT'] : ModelOutput = encoder_outputs_HAT
-
+            model_kwargs['encoder_outputs_HAT'] : ModelOutput = encoder_outputs_HAT
+            model_kwargs["sentence_attention_mask"] = sentence_attention_mask
+            model_kwargs["sentence_attention_mask"].to(device)
         return model_kwargs
     
     def generate(self,

@@ -323,7 +323,7 @@ def main(encoder_combination_type = 'HAT', layer_share = False):
                                 filename = '{epoch}-{val_loss:.2f}',
                                 save_top_k=10,
                                 monitor = 'val_loss')
-    trainer = pl.Trainer(gpus=1, accelerator='dp', 
+    trainer = pl.Trainer(gpus=2, accelerator='dp', 
 			max_epochs = max_epochs,
                         min_epochs = 1,
                         auto_lr_find = False,

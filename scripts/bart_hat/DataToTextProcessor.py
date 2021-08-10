@@ -98,7 +98,7 @@ def encode_sentences(tokenizer, df, source_keys, target_key, max_length=1024, pa
             sentences_key = row[key]
             sentences_key = eval(sentences_key)
             sentences_key = [each for each in sentences_key if each.strip()]
-            sentences_key = ["<%s> "%key +each + " </%s>"%key for each in sentences_key ]
+            #sentences_key = ["<%s> "%key +each + " </%s>"%key for each in sentences_key ]
             if sentences_key:
                 sentence_encoding, bos_ids = get_encoding(sentences_key)
 
@@ -156,7 +156,7 @@ class SummaryDataModule(pl.LightningDataModule):
         self.validate = preprocess_df(self.validate, preprocess_keys)
         self.test = preprocess_df(self.test, preprocess_keys)
 
-    def setup(self):
+    def setup(self, stage):
         self.train = encode_sentences(self.tokenizer, 
                                       self.train,
                                         ['population', 
@@ -243,7 +243,7 @@ class SummaryDataModule(pl.LightningDataModule):
 
 
 
-def make_data(tokenizer, SummaryDataModule,  data_type = 'robo', path = '/Users/sanjana', files = ['robo_train_sep.csv', 'robo_dev_sep.csv', 'robo_test_sep.csv'], max_len = 256):
+def make_data(tokenizer, SummaryDataModule,  data_type = 'robo', path = '/home/sanjana', files = ['robo_train_sep.csv', 'robo_dev_sep.csv', 'robo_test_sep.csv'], max_len = 256):
     if data_type == 'robo':
         train_file = path + '/summarization/datasets/%s'%(files[0])
         dev_file = path + '/summarization/datasets/%s'%(files[1])
@@ -258,6 +258,11 @@ def make_data(tokenizer, SummaryDataModule,  data_type = 'robo', path = '/Users/
 
 if __name__ == '__main__':
     additional_special_tokens = [ "<sep>"]
+    '''additional_special_tokens = ['<population>', '</population>',
+                                        '<interventions>', '</interventions>',
+                                        '<outcomes>', '</outcomes>',
+                                        '<punchline_text>', '</punchline_text>',
+                                        '<punchline_effect>', '</punchline_effect>', "<sep>"]'''
     tokenizer = BartTokenizer.from_pretrained('facebook/bart-base', bos_token="<s>", 
                                                     eos_token="</s>", 
                                                     pad_token = "<pad>")
@@ -269,9 +274,9 @@ if __name__ == '__main__':
     
                                     
     
-    summary_data = make_data(tokenizer, SummaryDataModule, data_type = 'robo', path = '/Users/sanjana', files = data_files, max_len = 1024)
+    summary_data = make_data(tokenizer, SummaryDataModule, data_type = 'robo', path = '/home/sanjana', files = data_files, max_len = 1024)
     print(summary_data.train)
-    summary_data.setup()
+    summary_data.setup("stage")
     it = summary_data.val_dataloader()
     batches = iter(it)
     batch = next(batches)

@@ -304,7 +304,7 @@ class BartDecoderMulti(BartPretrainedModel):
         use_cache=None,
         output_attentions=None,
         output_hidden_states=None,
-        decoder_combination = 'addition',
+        decoder_combination = 'hierarchical',
         return_dict=None,
     ):
 
@@ -743,6 +743,7 @@ class BartMultiEncHAT(BartPretrainedModel):
         encoder_outputs_col3 = None,
         encoder_outputs_col4 = None,
         encoder_outputs_HAT = None,
+        sentence_attention_mask = None,
         past_key_values=None,
         inputs_embeds=None,
         decoder_inputs_embeds=None,
@@ -982,6 +983,7 @@ class BartMultiEncHAT(BartPretrainedModel):
         attention_mask_col2 = None,
         attention_mask_col3 = None,
         attention_mask_col4 = None,
+        sentence_attention_mask = None,
         bos_ids_col0 = None,
         bos_ids_col1 = None,
         bos_ids_col2 = None,
@@ -1023,6 +1025,7 @@ class BartMultiEncHAT(BartPretrainedModel):
             "attention_mask_col2": attention_mask_col2,
             "attention_mask_col3": attention_mask_col3,
             "attention_mask_col4": attention_mask_col4,
+            "sentence_attention_mask": sentence_attention_mask,
             "bos_ids_col0" : bos_ids_col0,
             "bos_ids_col1" : bos_ids_col1,
             "bos_ids_col2" : bos_ids_col2,
