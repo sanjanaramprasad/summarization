@@ -97,7 +97,7 @@ class BartDecoderLayerMulti(nn.Module):
         past_key_value: Optional[Tuple[torch.Tensor]] = None,
         output_attentions: Optional[bool] = False,
         use_cache: Optional[bool] = True,
-	    decoder_combination = 'hierarchical'
+	    decoder_combination = 'addition'
     ):
         """
         Args:
@@ -539,7 +539,34 @@ class BartMultiEncHAT(BartPretrainedModel):
         self.fc1_ha = nn.Linear(config.d_model, config.encoder_ffn_dim)
         self.fc2_ha = nn.Linear(config.encoder_ffn_dim, config.d_model)
         self.final_layer_norm = nn.LayerNorm(config.d_model)
-        
+
+
+        self.fc1_sa0 = nn.Linear(config.d_model * 9, config.d_model * 5)
+        self.fc2_sa0 = nn.Linear(config.d_model * 5, config.d_model * 2)
+        self.fc3_sa0 = nn.Linear(config.d_model * 2, config.d_model)
+        self.layer_norm_sa0 = nn.LayerNorm(config.d_model)
+
+        self.fc1_sa1 = nn.Linear(config.d_model * 9, config.d_model * 5)
+        self.fc2_sa1 = nn.Linear(config.d_model * 5, config.d_model * 2)
+        self.fc3_sa1 = nn.Linear(config.d_model * 2, config.d_model)
+        self.layer_norm_sa1 = nn.LayerNorm(config.d_model)
+
+        self.fc1_sa2 = nn.Linear(config.d_model * 9, config.d_model * 5)
+        self.fc2_sa2 = nn.Linear(config.d_model * 5, config.d_model * 2)
+        self.fc3_sa2 = nn.Linear(config.d_model * 2, config.d_model)
+        self.layer_norm_sa2 = nn.LayerNorm(config.d_model)
+
+        self.fc1_sa3 = nn.Linear(config.d_model * 9, config.d_model * 5)
+        self.fc2_sa3 = nn.Linear(config.d_model * 5, config.d_model * 2)
+        self.fc3_sa3 = nn.Linear(config.d_model * 2, config.d_model)
+        self.layer_norm_sa3 = nn.LayerNorm(config.d_model)
+
+
+        self.fc1_sa4 = nn.Linear(config.d_model * 9, config.d_model * 5)
+        self.fc2_sa4 = nn.Linear(config.d_model * 5, config.d_model * 2)
+        self.fc3_sa4 = nn.Linear(config.d_model * 2, config.d_model)
+        self.layer_norm_sa4 = nn.LayerNorm(config.d_model)
+
         self.decoder = BartDecoderMulti(config,self.shared)
         self.register_buffer("final_logits_bias", torch.zeros((1, self.shared.num_embeddings)))
         self.lm_head = nn.Linear(config.d_model, self.shared.num_embeddings, bias=False)
@@ -648,6 +675,97 @@ class BartMultiEncHAT(BartPretrainedModel):
             )
         #print(added_enc_outputs)
         return added_enc_outputs
+
+
+    def _get_self_attn(self, encoder_outputs_concat, attention_mask, encoder_outputs_list = None):
+        residual = encoder_outputs_concat[0]
+
+        ##### Self Attention Block ####
+        attn_encoder_outputs_concat, _, _ = self.encoder_attn_concat(
+                hidden_states = encoder_outputs_concat[0],
+                attention_mask = attention_mask,
+                layer_head_mask=None,
+                output_attentions=False,
+                )
+
+        encoder_contexts = torch.chunk(attn_encoder_outputs_concat, 5, dim = 2)
+        all_encoder_vectors = []
+
+        for i, enc_i in enumerate(encoder_outputs_list):
+            enc_i = enc_i[0]
+            encoder_vectors_diff = []
+            encoder_vectors_mult = []
+            for j in range(0, len(encoder_contexts)):
+                context_j = encoder_contexts[j]
+                if i != j:
+                    diff = torch.sub(enc_i, context_j)
+                    mult = torch.mul(enc_i, context_j)
+                    encoder_vectors_diff.append(diff)
+                    encoder_vectors_mult.append(mult)
+            
+            e_vect = [enc_i] + encoder_vectors_diff + encoder_vectors_mult
+            
+            all_encoder_vectors.append(e_vect)
+
+
+        def _forward_pass(encoder_vectors, fc1, fc2, fc3, layer_norm):
+            hidden_states = self.activation_fn_fcn(fc1(encoder_vectors))
+            hidden_states = F.dropout(hidden_states, p=self.activation_dropout, training=self.training)
+            hidden_states = self.activation_fn_fcn(fc2(hidden_states))
+            hidden_states = F.dropout(hidden_states, p=self.activation_dropout, training=self.training)
+            hidden_states = self.activation_fn_fcn(fc3(hidden_states))
+            hidden_states = F.dropout(hidden_states, p=self.activation_dropout, training=self.training)
+            hidden_states = layer_norm(hidden_states)
+            return hidden_states
+
+        encoder_hidden_states_0 = _forward_pass(all_encoder_vectors[0], self.fc1_sa0, self.fc2_sa0, self.fc3_sa0, self.layer_norm_sa0)
+        encoder_hidden_states_1 = _forward_pass(all_encoder_vectors[1], self.fc1_sa1, self.fc2_sa1, self.fc3_sa1, self.layer_norm_sa1)
+        encoder_hidden_states_2 = _forward_pass(all_encoder_vectors[2], self.fc1_sa2, self.fc2_sa2, self.fc3_sa2, self.layer_norm_sa2)
+        encoder_hidden_states_3 = _forward_pass(all_encoder_vectors[3], self.fc1_sa3, self.fc2_sa3, self.fc3_sa3, self.layer_norm_sa3)
+        encoder_hidden_states_4 = _forward_pass(all_encoder_vectors[4], self.fc1_sa4, self.fc2_sa4, self.fc3_sa4, self.layer_norm_sa4)
+
+        encoder_hidden_states_0 = BaseModelOutput(
+            last_hidden_state=encoder_hidden_states_0, hidden_states=None, attentions=None
+        )
+        encoder_hidden_states_1 = BaseModelOutput(
+            last_hidden_state=encoder_hidden_states_1, hidden_states=None, attentions=None
+        )
+        encoder_hidden_states_2 = BaseModelOutput(
+            last_hidden_state=encoder_hidden_states_2, hidden_states=None, attentions=None
+        )
+        encoder_hidden_states_3 = BaseModelOutput(
+            last_hidden_state=encoder_hidden_states_3, hidden_states=None, attentions=None
+        )
+        encoder_hidden_states_4 = BaseModelOutput(
+            last_hidden_state=encoder_hidden_states_4, hidden_states=None, attentions=None
+        )
+
+        return encoder_hidden_states_0, encoder_hidden_states_1, encoder_hidden_states_2, \
+                encoder_hidden_states_3, encoder_hidden_states_4
+
+
+
+
+        
+        
+        
+
+
+        #print("ALL INFO SHAPE", all_encoder_vectors.shape)
+
+        #attn_encoder_outputs_concat = F.dropout(attn_encoder_outputs_concat, p=self.dropout, training=self.training)
+
+        #hidden_states = attn_encoder_outputs_concat + residual
+        #hidden_states = self.encoder_attn_concat_norm(hidden_states)
+        #print("HIDDEN STATES", hidden_states.shape)
+        
+
+        encoder_outputs = BaseModelOutput(
+                last_hidden_state=hidden_states,
+                hidden_states=None,
+                attentions=None,
+                )
+        return encoder_outputs
 
 
     def hierarchical_attn_forward(self, hidden_states, attention_mask, layer_head_mask = None, output_attentions = False):
@@ -854,7 +972,7 @@ class BartMultiEncHAT(BartPretrainedModel):
             encoder_outputs = encoder_outputs_list[0]
             attn_mask = attn_mask_list[0] if attn_mask_list else None
 
-        elif encoder_combination_type =='addition':
+        if encoder_combination_type =='addition':
                 average_flag = False
                 encoder_outputs = self._get_sum_encoder_outputs(
                         encoder_outputs_list,
@@ -878,7 +996,21 @@ class BartMultiEncHAT(BartPretrainedModel):
 
                     )
 
-        elif encoder_combination_type =='HAT':
+        elif encoder_combination_type == 'self_attention':
+            encoder_outputs_concat = self._get_concat_encoder_outputs(encoder_outputs_list)
+            attn_mask = self._get_attention_masks_OR(
+                        [attn_mask for attn_mask in attn_mask_list if not (attn_mask is None)]
+
+                    )
+            attention_mask = _expand_mask(attn_mask, torch.float32, tgt_len=encoder_outputs_concat[0].shape[1])
+            encoder_outputs_col0, encoder_outputs_col1, encoder_outputs_col2, encoder_outputs_col3, encoder_outputs_col4 = self._get_self_attn(encoder_outputs_concat, attention_mask, encoder_outputs_list)
+            attention_mask_col0 = None
+            attention_mask_col1 = None
+            attention_mask_col2 = None 
+            attention_mask_col3 = None
+            attention_mask_col4 = None
+
+            #elif encoder_combination_type =='HAT':
             #print("ENC AND INP SHAPE", encoder_outputs_list[0][0].shape, input_ids_col0.shape)
             #print("BOS ID shape", bos_id_list[0].shape)
             #print(bos_id_list[0])
@@ -886,7 +1018,8 @@ class BartMultiEncHAT(BartPretrainedModel):
             '''if True:
                 print("CHECKING BOS")
                 print([input_ids_col0[0][i] for i in bos_id_list[0][0].tolist() if i != -2])'''
-            if not encoder_outputs_HAT:
+
+        if not encoder_outputs_HAT:
                 sentence_representations, sentence_attention_mask = self._get_sentence_vectors(encoder_outputs_list, bos_id_list)
                 sentence_attention_mask = torch.as_tensor([sentence_attention_mask], device = attention_mask_col0.device)
                 encoder_outputs_HAT = self.hierarchical_attn_forward(sentence_representations, sentence_attention_mask)
