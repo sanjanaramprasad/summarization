@@ -676,6 +676,23 @@ class BartMultiEncHAT(BartPretrainedModel):
         #print(added_enc_outputs)
         return added_enc_outputs
 
+    def _get_concat_encoder_outputs(self, 
+        encoder_outputs_list):
+
+        encoder_outputs = {0:[], 1:[], 2:[]}
+        for i in range(0,3):
+            if len(encoder_outputs_list[0]) > i: 
+                added_enc_outputs_i = torch.cat([enc[i] for enc in encoder_outputs_list],2)
+                encoder_outputs[i].append(added_enc_outputs_i)
+            
+        added_enc_outputs = BaseModelOutput(
+                last_hidden_state=torch.cat(encoder_outputs[0], dim =0 ),
+                hidden_states=torch.cat(encoder_outputs[1], dim =0 ) if len(encoder_outputs[1]) > 0 else None,
+                attentions=torch.cat(encoder_outputs[2], dim =0 ) if len(encoder_outputs[2]) > 0 else None,
+            )
+        #print(added_enc_outputs)
+        return added_enc_outputs
+
 
     def _get_self_attn(self, encoder_outputs_concat, attention_mask, encoder_outputs_list = None):
         residual = encoder_outputs_concat[0]
@@ -743,29 +760,6 @@ class BartMultiEncHAT(BartPretrainedModel):
         return encoder_hidden_states_0, encoder_hidden_states_1, encoder_hidden_states_2, \
                 encoder_hidden_states_3, encoder_hidden_states_4
 
-
-
-
-        
-        
-        
-
-
-        #print("ALL INFO SHAPE", all_encoder_vectors.shape)
-
-        #attn_encoder_outputs_concat = F.dropout(attn_encoder_outputs_concat, p=self.dropout, training=self.training)
-
-        #hidden_states = attn_encoder_outputs_concat + residual
-        #hidden_states = self.encoder_attn_concat_norm(hidden_states)
-        #print("HIDDEN STATES", hidden_states.shape)
-        
-
-        encoder_outputs = BaseModelOutput(
-                last_hidden_state=hidden_states,
-                hidden_states=None,
-                attentions=None,
-                )
-        return encoder_outputs
 
 
     def hierarchical_attn_forward(self, hidden_states, attention_mask, layer_head_mask = None, output_attentions = False):
