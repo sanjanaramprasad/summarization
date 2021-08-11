@@ -540,6 +540,14 @@ class BartMultiEncHAT(BartPretrainedModel):
         self.fc2_ha = nn.Linear(config.encoder_ffn_dim, config.d_model)
         self.final_layer_norm = nn.LayerNorm(config.d_model)
 
+        self.encoder_attn_concat = BartAttention(
+            config.d_model * 5,
+            config.encoder_attention_heads,
+            dropout=config.attention_dropout,
+            is_decoder=False,
+        )
+        self.encoder_attn_concat_norm = nn.LayerNorm(config.d_model * 5)
+
 
         self.fc1_sa0 = nn.Linear(config.d_model * 9, config.d_model * 5)
         self.fc2_sa0 = nn.Linear(config.d_model * 5, config.d_model * 2)
@@ -692,6 +700,8 @@ class BartMultiEncHAT(BartPretrainedModel):
             )
         #print(added_enc_outputs)
         return added_enc_outputs
+
+    
 
 
     def _get_self_attn(self, encoder_outputs_concat, attention_mask, encoder_outputs_list = None):
