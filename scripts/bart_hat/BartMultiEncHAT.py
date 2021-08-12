@@ -97,7 +97,8 @@ class BartDecoderLayerMulti(nn.Module):
         past_key_value: Optional[Tuple[torch.Tensor]] = None,
         output_attentions: Optional[bool] = False,
         use_cache: Optional[bool] = True,
-	    decoder_combination = 'addition'
+	    decoder_combination = 'addition',
+        decoder_merge = False
     ):
         """
         Args:
@@ -189,9 +190,10 @@ class BartDecoderLayerMulti(nn.Module):
             ###############
 
             ####HIERARCH ATTN BLOCK
-            residual = hidden_states
-            hierarchical_attn_past_key_value = past_key_value[-2:] if past_key_value is not None else None
-            hidden_states_all, hierarchical_attn_weights, hierarchical_attn_present_key_value = self.hierarchical_attn(
+            if decoder_merge:
+                residual = hidden_states
+                hierarchical_attn_past_key_value = past_key_value[-2:] if past_key_value is not None else None
+                hidden_states_all, hierarchical_attn_weights, hierarchical_attn_present_key_value = self.hierarchical_attn(
                                                                                                         hidden_states=hidden_states,
                                                                                                         key_value_states=sentence_hidden_states,
                                                                                                         attention_mask=sentence_attention_mask,
@@ -199,10 +201,11 @@ class BartDecoderLayerMulti(nn.Module):
                                                                                                         past_key_value=hierarchical_attn_past_key_value,
                                                                                                         output_attentions=output_attentions,
                                                                                                     )
-            hidden_states = hidden_states_all + residual
-            hidden_states = F.dropout(hidden_states, p=self.dropout, training=self.training)
-            hidden_states = self.hierarchical_attn_layer_norm(hidden_states)
-            present_key_value = present_key_value + hierarchical_attn_present_key_value
+
+                hidden_states = hidden_states_all + residual
+                hidden_states = F.dropout(hidden_states, p=self.dropout, training=self.training)
+                hidden_states = self.hierarchical_attn_layer_norm(hidden_states)
+                present_key_value = present_key_value + hierarchical_attn_present_key_value
             ######################
         
         # Fully Connected
