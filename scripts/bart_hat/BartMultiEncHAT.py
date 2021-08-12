@@ -734,7 +734,7 @@ class BartMultiEncHAT(BartPretrainedModel):
                     encoder_vectors_mult.append(mult)
             
             e_vect = [enc_i] + encoder_vectors_diff + encoder_vectors_mult
-            
+            e_vect= torch.cat(e_vect, dim = 2)
             all_encoder_vectors.append(e_vect)
 
 
