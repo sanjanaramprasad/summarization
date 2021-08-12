@@ -62,7 +62,7 @@ class BartMultiEncHATTester():
 
     
 
-    def test_model_forward_bart_encoder(self, encoder_combination_type):
+    def test_model_forward_bart_encoder_flat(self, encoder_combination_type):
         from Coarse_multienc import BartMultiEncCoarse
         #from DataToTextProcessor_encoder import SummaryDataModule
         model = BartMultiEncCoarse.from_pretrained('facebook/bart-base')
