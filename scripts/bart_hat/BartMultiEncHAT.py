@@ -528,7 +528,7 @@ class BartMultiEncHAT(BartPretrainedModel):
         self.dropout = config.dropout
         self.activation_fn = ACT2FN[config.activation_function]
         self.activation_dropout = config.activation_dropout
-
+        self.activation_fn_fcn = ACT2FN["relu"]
         enc_concat_dim = 256 * 13
 
         self.encoder = BartEncoder(config, self.shared)
