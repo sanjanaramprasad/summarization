@@ -543,13 +543,13 @@ class BartMultiEncCoarse(BartPretrainedModel):
         self.fc2_ha = nn.Linear(config.encoder_ffn_dim, config.d_model)
         self.final_layer_norm = nn.LayerNorm(config.d_model)
 
-        self.encoder_attn_concat = BartAttention(
-            config.d_model * 5,
+        self.coarse_attn = BartAttention(
+            config.d_model *4,
             config.encoder_attention_heads,
             dropout=config.attention_dropout,
             is_decoder=False,
         )
-        self.encoder_attn_concat_norm = nn.LayerNorm(config.d_model * 5)
+        self.coarse_attn_norm = nn.LayerNorm(config.d_model * 5)
 
 
         self.fc1_ca0 = nn.Linear(config.d_model * 4, config.d_model * 2)
@@ -675,7 +675,7 @@ class BartMultiEncCoarse(BartPretrainedModel):
         hidden_states = torch.cat(encoder_output_list, dim = 2)
         key_value_states = torch.cat([encoder_output] * num_values, dim =2)
         attention_mask = torch.cat(attention_mask_list, dim = 1)
-
+        print("hidden_states", hidden_states.shape, '<=', encoder_output_list[0].shape)
         hidden_states, coarse_attn_weights, coarse_attn_present_key_value= self.coarse_attn(
                 hidden_states=hidden_states,
                 key_value_states=key_value_states,
