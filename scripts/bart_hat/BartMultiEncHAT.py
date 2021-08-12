@@ -979,6 +979,13 @@ class BartMultiEncHAT(BartPretrainedModel):
             encoder_outputs = encoder_outputs_list[0]
             attn_mask = attn_mask_list[0] if attn_mask_list else None
 
+        if not encoder_outputs_HAT:
+                sentence_representations, sentence_attention_mask = self._get_sentence_vectors(encoder_outputs_list, bos_id_list)
+                sentence_attention_mask = torch.as_tensor([sentence_attention_mask], device = attention_mask_col0.device)
+                encoder_outputs_HAT = self.hierarchical_attn_forward(sentence_representations, sentence_attention_mask)
+                #print(sentence_representations, sentence_attention_mask)
+
+
         if encoder_combination_type =='addition':
                 average_flag = False
                 encoder_outputs = self._get_sum_encoder_outputs(
@@ -1025,12 +1032,6 @@ class BartMultiEncHAT(BartPretrainedModel):
             '''if True:
                 print("CHECKING BOS")
                 print([input_ids_col0[0][i] for i in bos_id_list[0][0].tolist() if i != -2])'''
-
-        if not encoder_outputs_HAT:
-                sentence_representations, sentence_attention_mask = self._get_sentence_vectors(encoder_outputs_list, bos_id_list)
-                sentence_attention_mask = torch.as_tensor([sentence_attention_mask], device = attention_mask_col0.device)
-                encoder_outputs_HAT = self.hierarchical_attn_forward(sentence_representations, sentence_attention_mask)
-                #print(sentence_representations, sentence_attention_mask)
 
         if labels is not None:
             if decoder_input_ids is None:
