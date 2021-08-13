@@ -689,8 +689,9 @@ class BartMultiEncCoarse(BartPretrainedModel):
             )
 
         hidden_states_chunk = torch.chunk(hidden_states, num_values, dim = 1)
-        print("HiDDEN STATES", len(hidden_states_chunk), hidden_states_chunk[0].shape)
-        #print("RESULT", hidden_states.shape)
+        hidden_states_chunk = torch.stack(hidden_states_chunk)
+        hidden_states = torch.mean(hidden_states_chunk, dim = 0)
+        print("RESULT", hidden_states.shape)
         hidden_states = nn.functional.dropout(hidden_states, p=self.dropout, training=self.training)
         hidden_states = self._forward_pass(hidden_states, fc1, fc2 , layer_norm)
 
