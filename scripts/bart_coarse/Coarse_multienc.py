@@ -169,7 +169,9 @@ class BartDecoderLayerMulti(nn.Module):
             hidden_states_4, cross_attn_present_key_value_4 = cross_attn_block(self.encoder_attn_4, encoder_hidden_states4, encoder_attention_mask4, hidden_states, cross_attn_past_key_value)
 
             if decoder_combination == 'addition':
-                hidden_states_all = hidden_states_0 + hidden_states_1 + hidden_states_2 + hidden_states_3 + hidden_states_4
+                #hidden_states_all = hidden_states_0 + hidden_states_1 + hidden_states_2 + hidden_states_3 + hidden_states_4
+                hidden_states_all = torch.stack([hidden_states_0 , hidden_states_1, hidden_states_2, hidden_states_3, hidden_states_4])
+                hidden_states_all = torch.mean(hidden_states_all, dim = 0)
 
             else:
                 concat_attn_past_key_value = past_key_value[12:14] if past_key_value is not None else None
@@ -718,7 +720,7 @@ class BartMultiEncCoarse(BartPretrainedModel):
         hidden_states = torch.mean(hidden_states_chunk, dim = 0)
         #print("RESULT", hidden_states.shape)
         hidden_states = nn.functional.dropout(hidden_states, p=self.dropout, training=self.training)
-        #hidden_states = self._forward_pass(hidden_states, fc1, fc2 , layer_norm)
+        hidden_states = self._forward_pass(hidden_states, fc1, fc2 , layer_norm)
 
         hidden_states = BaseModelOutput(
                 last_hidden_state=hidden_states,
