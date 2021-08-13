@@ -543,7 +543,31 @@ class BartMultiEncCoarse(BartPretrainedModel):
         self.fc2_ha = nn.Linear(config.encoder_ffn_dim, config.d_model)
         self.final_layer_norm = nn.LayerNorm(config.d_model)
 
-        self.coarse_attn = BartAttention(
+        self.coarse_attn_0 = BartAttention(
+            config.d_model,
+            config.encoder_attention_heads,
+            dropout=config.attention_dropout,
+            is_decoder=False,
+        )
+        self.coarse_attn_1 = BartAttention(
+            config.d_model,
+            config.encoder_attention_heads,
+            dropout=config.attention_dropout,
+            is_decoder=False,
+        )
+        self.coarse_attn_2 = BartAttention(
+            config.d_model,
+            config.encoder_attention_heads,
+            dropout=config.attention_dropout,
+            is_decoder=False,
+        )
+        self.coarse_attn_3 = BartAttention(
+            config.d_model,
+            config.encoder_attention_heads,
+            dropout=config.attention_dropout,
+            is_decoder=False,
+        )
+        self.coarse_attn_4 = BartAttention(
             config.d_model,
             config.encoder_attention_heads,
             dropout=config.attention_dropout,
@@ -670,7 +694,7 @@ class BartMultiEncCoarse(BartPretrainedModel):
             hidden_states = layer_norm(hidden_states)
             return hidden_states
 
-    def _get_coarse_attn(self, encoder_output, encoder_output_list, attention_mask_list, fc1, fc2 , layer_norm):
+    def _get_coarse_attn(self,coarse_attn, encoder_output, encoder_output_list, attention_mask_list, fc1, fc2 , layer_norm):
         encoder_output = encoder_output[0]
         encoder_output_list = [each[0] for each in encoder_output_list]
 
@@ -682,9 +706,10 @@ class BartMultiEncCoarse(BartPretrainedModel):
         print("key_value_states", key_value_states.shape)
         print("attention_mask", attention_mask.shape)
 
-        hidden_states, coarse_attn_weights, coarse_attn_present_key_value= self.coarse_attn(
+        hidden_states, coarse_attn_weights, coarse_attn_present_key_value= coarse_attn(
                 hidden_states=hidden_states,
                 key_value_states=key_value_states,
+                attention_mask = attention_mask,
                 attention_mask=None,
             )
 
@@ -839,36 +864,36 @@ class BartMultiEncCoarse(BartPretrainedModel):
 
         
         if encoder_combination_type == 'coarse_attention':
-            encoder_outputs_col0_op = self._get_coarse_attn(encoder_outputs_col0, 
+            encoder_outputs_col0_op = self._get_coarse_attn(self.coarse_attn_0, encoder_outputs_col0, 
                                         [encoder_outputs_col1, encoder_outputs_col2, encoder_outputs_col3, encoder_outputs_col4],
                                         [attention_mask_col1, attention_mask_col2, attention_mask_col3, attention_mask_col4],
                                         self.fc1_ca0, self.fc2_ca0, self.layer_norm_ca0 )
 
-            encoder_outputs_col1_op = self._get_coarse_attn(encoder_outputs_col1, 
+            encoder_outputs_col1_op = self._get_coarse_attn(self.coarse_attn_1, encoder_outputs_col1, 
                                         [encoder_outputs_col0, encoder_outputs_col2, encoder_outputs_col3, encoder_outputs_col4],
                                         [attention_mask_col0, attention_mask_col2, attention_mask_col3, attention_mask_col4],
                                         self.fc1_ca1, self.fc2_ca1, self.layer_norm_ca1 )
 
-            encoder_outputs_col2_op = self._get_coarse_attn(encoder_outputs_col2, 
+            encoder_outputs_col2_op = self._get_coarse_attn(self.coarse_attn_2, encoder_outputs_col2, 
                                         [encoder_outputs_col0, encoder_outputs_col1, encoder_outputs_col3, encoder_outputs_col4],
                                         [attention_mask_col0, attention_mask_col1, attention_mask_col3, attention_mask_col4],
                                         self.fc1_ca2, self.fc2_ca2, self.layer_norm_ca2 )
 
-            encoder_outputs_col3_op = self._get_coarse_attn(encoder_outputs_col3, 
+            encoder_outputs_col3_op = self._get_coarse_attn(self.coarse_attn_3, encoder_outputs_col3, 
                                         [encoder_outputs_col0, encoder_outputs_col1, encoder_outputs_col2, encoder_outputs_col4],
                                         [attention_mask_col0, attention_mask_col1, attention_mask_col2, attention_mask_col4],
                                         self.fc1_ca3, self.fc2_ca3, self.layer_norm_ca3 )
 
-            encoder_outputs_col4_op = self._get_coarse_attn(encoder_outputs_col4, 
+            encoder_outputs_col4_op = self._get_coarse_attn(self.coarse_attn_4, encoder_outputs_col4, 
                                         [encoder_outputs_col0, encoder_outputs_col1, encoder_outputs_col2, encoder_outputs_col3],
                                         [attention_mask_col0, attention_mask_col1, attention_mask_col2, attention_mask_col3],
                                         self.fc1_ca4, self.fc2_ca4, self.layer_norm_ca4 )
 
-            attention_mask_col0 = None
+            '''attention_mask_col0 = None
             attention_mask_col1 = None
             attention_mask_col2 = None 
             attention_mask_col3 = None
-            attention_mask_col4 = None
+            attention_mask_col4 = None'''
 
         if labels is not None:
             if decoder_input_ids is None:
