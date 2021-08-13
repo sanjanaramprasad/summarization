@@ -702,23 +702,23 @@ class BartMultiEncCoarse(BartPretrainedModel):
         hidden_states = torch.cat(encoder_output_list, dim = 1)
         key_value_states = torch.cat([encoder_output] * num_values, dim =1)
         attention_mask = torch.cat(attention_mask_list, dim = 1)
-        print("hidden_states", hidden_states.shape, '<=', encoder_output_list[0].shape)
-        print("key_value_states", key_value_states.shape)
-        print("attention_mask", attention_mask.shape)
+        attention_mask = _expand_mask(attention_mask, torch.float32, tgt_len=hidden_states.shape[1])
+        #print("hidden_states", hidden_states.shape, '<=', encoder_output_list[0].shape)
+        #print("key_value_states", key_value_states.shape)
+        #print("attention_mask", attention_mask.shape)
 
         hidden_states, coarse_attn_weights, coarse_attn_present_key_value= coarse_attn(
                 hidden_states=hidden_states,
                 key_value_states=key_value_states,
                 attention_mask = attention_mask,
-                attention_mask=None,
             )
 
         hidden_states_chunk = torch.chunk(hidden_states, num_values, dim = 1)
         hidden_states_chunk = torch.stack(hidden_states_chunk)
         hidden_states = torch.mean(hidden_states_chunk, dim = 0)
-        print("RESULT", hidden_states.shape)
+        #print("RESULT", hidden_states.shape)
         hidden_states = nn.functional.dropout(hidden_states, p=self.dropout, training=self.training)
-        hidden_states = self._forward_pass(hidden_states, fc1, fc2 , layer_norm)
+        #hidden_states = self._forward_pass(hidden_states, fc1, fc2 , layer_norm)
 
         hidden_states = BaseModelOutput(
                 last_hidden_state=hidden_states,
@@ -948,7 +948,7 @@ class BartMultiEncCoarse(BartPretrainedModel):
             encoder_attentions=None,
             )
             
-        print("OUTPUTS", outputs[0])
+        #print("OUTPUTS", outputs[0])
         lm_logits = self.lm_head(outputs[0]) + self.final_logits_bias
         masked_lm_loss = None
         if labels is not None:

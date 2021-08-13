@@ -153,14 +153,14 @@ class LitModel(pl.LightningModule):
     def configure_optimizers(self):
         print("PARAMS", self.parameters())
         optimizer = AdamW(self.model.parameters(),
-            lr=3e-5, eps = 1e-7, betas = (0.9, 0.999), weight_decay = 0.01)
+            lr=3e-4, eps = 1e-7, betas = (0.9, 0.999), weight_decay = 0.01)
         num_gpus = torch.cuda.device_count() if torch.cuda.is_available() else 1
         num_steps = len(self.train_dataloader()) * 12 / num_gpus / 1 / 1
         scheduler = get_linear_schedule_with_warmup(
             optimizer, num_warmup_steps=1300, num_training_steps=num_steps
         )
-        return optimizer
-        #return optimizer], [{"scheduler": scheduler, "interval": "step"}]
+        #return optimizer
+        return [optimizer], [{"scheduler": scheduler, "interval": "step"}]
         '''optimizer = NoamOpt(768, 2, 4000,
             torch.optim.Adam(self.parameters(), lr=0, betas=(0.9, 0.98), eps=1e-5))
         #optimizer = torch.optim.Adam(self.parameters(), lr = self.learning_rate)
