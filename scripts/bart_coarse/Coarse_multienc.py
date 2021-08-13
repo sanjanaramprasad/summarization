@@ -97,7 +97,7 @@ class BartDecoderLayerMulti(nn.Module):
         past_key_value: Optional[Tuple[torch.Tensor]] = None,
         output_attentions: Optional[bool] = False,
         use_cache: Optional[bool] = True,
-	    decoder_combination = 'addition',
+	decoder_combination = 'addition',
         decoder_merge = False
     ):
         """
@@ -139,7 +139,7 @@ class BartDecoderLayerMulti(nn.Module):
 
         if encoder_hidden_states is not None:
             def cross_attn_block(encoder_attn, encoder_hidden_states, encoder_attention_mask, hidden_states, cross_attn_past_key_value):
-            
+                print("CA")    
                 if encoder_hidden_states is not None:
                     enc_hidden_states, cross_attn_weights, cross_attn_present_key_value = encoder_attn(
                         hidden_states=hidden_states,
@@ -172,6 +172,7 @@ class BartDecoderLayerMulti(nn.Module):
                 #hidden_states_all = hidden_states_0 + hidden_states_1 + hidden_states_2 + hidden_states_3 + hidden_states_4
                 hidden_states_all = torch.stack([hidden_states_0 , hidden_states_1, hidden_states_2, hidden_states_3, hidden_states_4])
                 hidden_states_all = torch.mean(hidden_states_all, dim = 0)
+                print("ADDITION", hidden_states_all.shape)
 
             else:
                 concat_attn_past_key_value = past_key_value[12:14] if past_key_value is not None else None
