@@ -67,6 +67,7 @@ class BartMultiEncHATTester():
         #from DataToTextProcessor_encoder import SummaryDataModule
         model = BartMultiEncCoarse.from_pretrained('facebook/bart-base')
         model._make_duplicate_encoders(layer_share = False)
+        model._make_duplicate_decoder_layer_attns()
         model.resize_token_embeddings(len(tokenizer))
         print("Loading Data ...")
         summary_data = make_data(tokenizer, SummaryDataModule, path = '/home/ramprasad.sa', files = ['train_rr_data.csv', 
