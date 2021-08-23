@@ -139,7 +139,7 @@ class BartDecoderLayerMulti(nn.Module):
 
         if encoder_hidden_states is not None:
             def cross_attn_block(encoder_attn, encoder_hidden_states, encoder_attention_mask, hidden_states, cross_attn_past_key_value):
-                print("CA")    
+                #print("CA")    
                 if encoder_hidden_states is not None:
                     enc_hidden_states, cross_attn_weights, cross_attn_present_key_value = encoder_attn(
                         hidden_states=hidden_states,
@@ -172,7 +172,7 @@ class BartDecoderLayerMulti(nn.Module):
                 #hidden_states_all = hidden_states_0 + hidden_states_1 + hidden_states_2 + hidden_states_3 + hidden_states_4
                 hidden_states_all = torch.stack([hidden_states_0 , hidden_states_1, hidden_states_2, hidden_states_3, hidden_states_4])
                 hidden_states_all = torch.mean(hidden_states_all, dim = 0)
-                print("ADDITION", hidden_states_all.shape)
+                #print("ADDITION", hidden_states_all.shape)
 
             else:
                 concat_attn_past_key_value = past_key_value[12:14] if past_key_value is not None else None
@@ -194,6 +194,7 @@ class BartDecoderLayerMulti(nn.Module):
 
             ####HIERARCH ATTN BLOCK
             if decoder_merge:
+                #print("HIERARCH ATTN")
                 residual = hidden_states
                 hierarchical_attn_past_key_value = past_key_value[-2:] if past_key_value is not None else None
                 hidden_states_all, hierarchical_attn_weights, hierarchical_attn_present_key_value = self.hierarchical_attn(
@@ -310,7 +311,7 @@ class BartDecoderMulti(BartPretrainedModel):
         use_cache=None,
         output_attentions=None,
         output_hidden_states=None,
-        decoder_combination = 'hierarchical',
+        decoder_combination = 'addition',
         return_dict=None,
     ):
 
@@ -869,27 +870,27 @@ class BartMultiEncCoarse(BartPretrainedModel):
         if encoder_combination_type == 'coarse_attention':
             encoder_outputs_col0_op = self._get_coarse_attn(self.coarse_attn_0, encoder_outputs_col0, 
                                         [encoder_outputs_col1, encoder_outputs_col2, encoder_outputs_col3, encoder_outputs_col4],
-                                        [attention_mask_col1, attention_mask_col2, attention_mask_col3, attention_mask_col4],
+                                        [attention_mask_col0, attention_mask_col0, attention_mask_col0, attention_mask_col0],
                                         self.fc1_ca0, self.fc2_ca0, self.layer_norm_ca0 )
 
             encoder_outputs_col1_op = self._get_coarse_attn(self.coarse_attn_1, encoder_outputs_col1, 
                                         [encoder_outputs_col0, encoder_outputs_col2, encoder_outputs_col3, encoder_outputs_col4],
-                                        [attention_mask_col0, attention_mask_col2, attention_mask_col3, attention_mask_col4],
+                                        [attention_mask_col1, attention_mask_col1, attention_mask_col1, attention_mask_col1],
                                         self.fc1_ca1, self.fc2_ca1, self.layer_norm_ca1 )
 
             encoder_outputs_col2_op = self._get_coarse_attn(self.coarse_attn_2, encoder_outputs_col2, 
                                         [encoder_outputs_col0, encoder_outputs_col1, encoder_outputs_col3, encoder_outputs_col4],
-                                        [attention_mask_col0, attention_mask_col1, attention_mask_col3, attention_mask_col4],
+                                        [attention_mask_col2, attention_mask_col2, attention_mask_col2, attention_mask_col2],
                                         self.fc1_ca2, self.fc2_ca2, self.layer_norm_ca2 )
 
             encoder_outputs_col3_op = self._get_coarse_attn(self.coarse_attn_3, encoder_outputs_col3, 
                                         [encoder_outputs_col0, encoder_outputs_col1, encoder_outputs_col2, encoder_outputs_col4],
-                                        [attention_mask_col0, attention_mask_col1, attention_mask_col2, attention_mask_col4],
+                                        [attention_mask_col3, attention_mask_col3, attention_mask_col3, attention_mask_col3],
                                         self.fc1_ca3, self.fc2_ca3, self.layer_norm_ca3 )
 
             encoder_outputs_col4_op = self._get_coarse_attn(self.coarse_attn_4, encoder_outputs_col4, 
                                         [encoder_outputs_col0, encoder_outputs_col1, encoder_outputs_col2, encoder_outputs_col3],
-                                        [attention_mask_col0, attention_mask_col1, attention_mask_col2, attention_mask_col3],
+                                        [attention_mask_col4, attention_mask_col4, attention_mask_col4, attention_mask_col4],
                                         self.fc1_ca4, self.fc2_ca4, self.layer_norm_ca4 )
 
             '''attention_mask_col0 = None
