@@ -9,23 +9,16 @@ from torch import nn
 import torch
 
 
-
-def make_data(tokenizer, SummaryDataModule,  data_type = 'robo', path = '/home/sanjana', files = ['robo_train_sep.csv', 'robo_dev_sep.csv', 'robo_test_sep.csv']):
+def make_data(tokenizer, SummaryDataModule,  data_type = 'robo', path = '/home/ramprasad.sa', files = ['robo_train_sep.csv', 'robo_dev_sep.csv', 'robo_test_sep.csv']):
     if data_type == 'robo':
-        train_file = path + '/roboreviewer_summarization/data/bart_multienc_per_key/%s'%(files[0])
-        dev_file = path + '/roboreviewer_summarization/data/bart_multienc_per_key/%s'%(files[1])
-        test_file = path + '/roboreviewer_summarization/data/bart_multienc_per_key/%s'%(files[2])
-
-    elif data_type =='webnlg':
-        train_file = path + '/roboreviewer_summarization/data/web_nlg_train.csv'
-        dev_file = path + '/roboreviewer_summarization/data/web_nlg_dev.csv'
-        test_file = path + '/roboreviewer_summarization/data/web_nlg_test.csv'
+        train_file = path + '/summarization/datasets/%s'%(files[0])
+        dev_file = path + '/summarization/datasets/%s'%(files[1])
+        test_file = path + '/summarization/datasets/%s'%(files[2])
 
     data_files = [train_file, dev_file, test_file]
-    summary_data = SummaryDataModule(tokenizer, data_files = data_files,  batch_size = 1)
+    summary_data = SummaryDataModule(tokenizer, data_files = data_files,  batch_size = 1, max_len = 1024)
     summary_data.prepare_data()
     return summary_data
-
 
 def get_data(data):
         input_ids_col0 = data[0] if len(data) >1 else None
@@ -65,35 +58,18 @@ tokenizer = BartTokenizer.from_pretrained('facebook/bart-base', bos_token="<s>",
 
 class BartForDataToTextGenerationTester():
 
-    def test_get_encoders(self):
-        encoder_col0, encoder_col1, \
-            encoder_col2, encoder_col3, encoder_col4 = model.get_encoders() 
-
-        
-
-        self.encoder_col0 = encoder_col0
-        self.encoder_col1 = encoder_col1
-        self.encoder_col2 = encoder_col2
-        self.encoder_col3 = encoder_col3
-        self.encoder_col4 = encoder_col4
-
-        self.encoder_outputs_list = []
-        self.attn_list = []
-        return
-    
-
     
 
     def test_model_forward_bart_decoder_addition(self, encoder_combination_type):
         from BartForDataToText_decoder_combinations import BartForDataToTextDecoderMod
         #from Data2TextProcessor_1 import SummaryDataModule
         model = BartForDataToTextDecoderMod.from_pretrained('facebook/bart-base')
-        model._make_duplicate_encoders(layer_share = False)
+        model._make_duplicate_encoders(layer_share = True)
         model._make_duplicate_decoder_layer_attns()
         model.resize_token_embeddings(len(tokenizer))
         print("Loading Data ...")
-        summary_data = make_data(tokenizer, SummaryDataModule, path = '/home/ramprasad.sa', files = ['robo_train_sep.csv', 
-                            'robo_dev_sep.csv', 'robo_test_sep.csv'])
+        summary_data = make_data(tokenizer, SummaryDataModule, path = '/home/ramprasad.sa', files = ['train_rr_data.csv', 
+                            'dev_rr_data.csv', 'test_rr_data.csv'])
         summary_data.setup("stage")
         test_data = summary_data.test_dataloader(data_type = 'robo')
         print("Done.")
