@@ -33,6 +33,7 @@ def encode_sentences(tokenizer, df, source_keys, targets, max_length=1024, pad_t
         if isinstance(snippet, list):
             snippet_processed = []
             for each in snippet:
+                each = each.strip()
                 enc = run_bart(each)
                 if len(enc['input_ids']) < 1000:
                     ##key = "attribute"

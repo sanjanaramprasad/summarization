@@ -49,42 +49,11 @@ additional_special_tokens = ["<sep>",
             "<punchline_text>", "</punchline_text>",
             "<population>", "</population>",
             "<interventions>", "</interventions>"]
-
-'''def get_data(data):
-        population_input_ids = data[0] 
-        population_attention_masks = data[1] 
-        population_bos_ids = data[2]
-
-        interventions_input_ids = data[3] 
-        interventions_attention_masks = data[4] 
-        interventions_bos_ids = data[5]
-
-
-        outcomes_input_ids = data[6] 
-        outcomes_attention_masks = data[7] 
-        outcomes_bos_ids = data[8]
-
-        punchline_text_input_ids = data[9] 
-        punchline_text_attention_masks = data[10] 
-        punchline_text_bos_ids = data[11]
-
-        punchline_effect_input_ids = data[12] 
-        punchline_effect_attention_masks = data[13] 
-        punchline_effect_bos_ids = data[14]
-
-
-        return population_input_ids, population_attention_masks, population_bos_ids,\
-                interventions_input_ids, interventions_attention_masks, interventions_bos_ids,\
-                outcomes_input_ids, outcomes_attention_masks, outcomes_bos_ids,\
-                punchline_text_input_ids, punchline_text_attention_masks, punchline_text_bos_ids,\
-                punchline_effect_input_ids, punchline_effect_attention_masks, punchline_effect_bos_ids'''
-
-
 tokenizer = BartTokenizer.from_pretrained('facebook/bart-base', bos_token="<s>",
                                                     eos_token="</s>",
                                                     pad_token = "<pad>")
 
-tokenizer.add_tokens(additional_special_tokens)
+
 
 
 class BartForDataToTextGenerationTester():
@@ -95,7 +64,7 @@ class BartForDataToTextGenerationTester():
         from BartForDataToText_EncoderMod import BartForDataToText
         #from DataToTextProcessor_encoder import SummaryDataModule
         model = BartForDataToText.from_pretrained('facebook/bart-base')
-        model._make_duplicate_encoders(layer_share = True)
+        model._make_duplicate_encoders(layer_share = False)
         model.resize_token_embeddings(len(tokenizer))
         print("Loading Data ...")
         summary_data = make_data(tokenizer, SummaryDataModule, path = '/home/ramprasad.sa', files = ['train_rr_data.csv', 
@@ -106,11 +75,10 @@ class BartForDataToTextGenerationTester():
         it = iter(test_data)
         
         data = next(it)
-        input_ids_col0, attention_mask_col0,\
-        input_ids_col1, attention_mask_col1, \
-            input_ids_col2, attention_mask_col2,  \
+        input_ids_col0, attention_mask_col0, input_ids_col1, attention_mask_col1, \
+            input_ids_col2, attention_mask_col2, \
             input_ids_col3, attention_mask_col3, \
-            input_ids_col4, attention_mask_col4, = get_data(data)
+            input_ids_col4, attention_mask_col4 = get_data(data)
 
         
 
@@ -147,5 +115,5 @@ class BartForDataToTextGenerationTester():
  
         
 obj = BartForDataToTextGenerationTester()
-obj.test_model_forward_bart_encoder(encoder_combination_type = 'addition')
+obj.test_model_forward_bart_encoder(encoder_combination_type = 'self_attn')
 #obj.test_model_forward_bart_encoder_loop_per_study(encoder_combination_type = 'linearize')

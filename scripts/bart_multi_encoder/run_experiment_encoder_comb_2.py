@@ -55,7 +55,7 @@ class LitModel(pl.LightningModule):
         super().__init__()
         self.tokenizer = tokenizer
         self.model = model
-        self.model._make_duplicate_encoders(layer_share = True)
+        self.model._make_duplicate_encoders(layer_share = layer_share)
         self.model.resize_token_embeddings(len(self.tokenizer))
         self.learning_rate = learning_rate
         self.freeze_encoder = freeze_encoder
@@ -286,6 +286,6 @@ def main(encoder_combination_type = 'addition', layer_share = False):
 
 
 if __name__ == '__main__': 
-    main(encoder_combination_type = 'addition', layer_share = True)
+    main(encoder_combination_type = 'recursive_cross_attn')
            
 

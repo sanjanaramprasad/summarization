@@ -352,7 +352,7 @@ class BartForDataToText(BartPretrainedModel):
         encoder_outputs_list = [each for each in encoder_outputs if each is not None]
         attention_masks = [attention_mask_col0, attention_mask_col1, attention_mask_col2, attention_mask_col3, attention_mask_col4]
         attn_mask_list = [each for each in attention_masks if each is not None]
-        inputs_embeds_dummy = self.embed_tokens(input_ids_col0) * self.embed_scale
+        #inputs_embeds_dummy = self.embed_tokens(input_ids_col0) * self.embed_scale
 
         if len(encoder_outputs_list) == 1:
             encoder_outputs = encoder_outputs_list[0]
