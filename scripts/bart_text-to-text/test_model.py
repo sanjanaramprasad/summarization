@@ -91,13 +91,19 @@ def make_data(tokenizer, SummaryDataModule,  data_type = 'robo', path = '/home/r
 
 
 print("Init tokenizer ...")
-additional_special_tokens = ["<sep>"]
-
+additional_special_tokens = ["<sep>", "<study>", "</study>"]
 tokenizer = BartTokenizer.from_pretrained('facebook/bart-base', bos_token="<s>", 
                                                     eos_token="</s>", 
                                                     pad_token = "<pad>")
 
 tokenizer.add_tokens(additional_special_tokens)
+    #bart_model = BartForConditionalGeneration.from_pretrained('facebook/bart-base')    
+data_files = ['train_rr_data.csv', 'dev_rr_data.csv' , 'test_rr_data.csv']
+
+    
+summary_data = make_data(tokenizer, SummaryDataModule, data_type = 'robo', path = '/home/ramprasad.sa', files = data_files, max_len = 1024)
+    
+
 files = ['train_rr_data.csv', 
                             'dev_rr_data.csv', 'test_rr_data.csv']
 max_len = 1024                                       

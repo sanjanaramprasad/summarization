@@ -111,7 +111,6 @@ class LitModel(pl.LightningModule):
     
         input_ids = batch[0] 
         attention_mask= batch[1]
-        bos_ids = batch[2]
         tgt_ids = batch[-1]
         outputs = self(
             input_ids= input_ids,
@@ -139,7 +138,6 @@ class LitModel(pl.LightningModule):
         
         input_ids = batch[0] 
         attention_mask= batch[1]
-        bos_ids = batch[2]
         tgt_ids = batch[-1]
         outputs = self(
             input_ids= input_ids,
@@ -188,20 +186,23 @@ def make_data(tokenizer, SummaryDataModule,  data_type = 'robo', path = '/home/r
 
 
 def main():
-    additional_special_tokens = ["<sep>"]
-
+    additional_special_tokens = ["<sep>", "<study>", "</study>"]
     tokenizer = BartTokenizer.from_pretrained('facebook/bart-base', bos_token="<s>", 
                                                     eos_token="</s>", 
                                                     pad_token = "<pad>")
 
-    tokenizer.add_tokens(additional_special_tokens) 
-    ##from Data2TextProcessor import SummaryDataModule
-    files = ['train_rr_data.csv', 
-                            'dev_rr_data.csv', 'test_rr_data.csv']
+    tokenizer.add_tokens(additional_special_tokens)
+    #bart_model = BartForConditionalGeneration.from_pretrained('facebook/bart-base')    
+    data_files = ['train_rr_data.csv', 'dev_rr_data.csv' , 'test_rr_data.csv']
+
+    
+    
+    summary_data = make_data(tokenizer, SummaryDataModule, data_type = 'robo', path = '/home/ramprasad.sa', files = data_files, max_len = 1024)
+    
+
     max_len = 1024
 
     
-    summary_data = make_data(tokenizer, SummaryDataModule, path = '/home/ramprasad.sa', files = files, max_len = max_len)
     bart_model = BartForConditionalGeneration.from_pretrained('facebook/bart-base')    
     bart_model.resize_token_embeddings(len(tokenizer))
     #hparams = argparse.Namespace()
@@ -225,24 +226,27 @@ def main():
     trainer.fit(model, summary_data)
 
 def inference(checkpoint_file):
-    additional_special_tokens = ["<sep>"]
+
+    additional_special_tokens = ["<sep>", "<study>", "</study>"]
 
     tokenizer = BartTokenizer.from_pretrained('facebook/bart-base', bos_token="<s>", 
                                                     eos_token="</s>", 
                                                     pad_token = "<pad>")
 
     tokenizer.add_tokens(additional_special_tokens)
+    #bart_model = BartForConditionalGeneration.from_pretrained('facebook/bart-base')    
+    data_files = ['train_rr_data.csv', 'dev_rr_data.csv' , 'test_rr_data.csv']
+
+    
+    
+    
     hparams = argparse.Namespace()
     rouge = Rouge()
     hparams.freeze_encoder = True
     hparams.freeze_embeds = True
     hparams.eval_beams = 2
-    files = ['train_rr_data.csv', 
-                            'dev_rr_data.csv', 'test_rr_data.csv']
-    max_len = 1024
     model = LitModel.load_from_checkpoint(checkpoint_path=checkpoint_file)
-
-    summary_data = make_data(tokenizer, SummaryDataModule, path = '/home/ramprasad.sa', files = files, max_len = max_len)
+    summary_data = make_data(tokenizer, SummaryDataModule, data_type = 'robo', path = '/Users/sanjana', files = data_files, max_len = 1024)
     summary_data.setup("stage")
     val_data = summary_data.val_dataloader(data_type = 'robo')
 
@@ -278,7 +282,10 @@ def inference(checkpoint_file):
     print("ROGUE", rouge.get_scores(model_out, references, avg=True))
     print("METEOR", sum(meteor_scores)/len(meteor_scores))
     print("BLEU", sum(bleu_scores)/len(bleu_scores))
+    df_write = pd.DataFrame(list(zip(references, model_out)), columns=["Reference Summary", "Generated Summary"])
+    file_name = "run_inference_output"
+    df_write.to_csv("%s.csv"%file_name)
 if __name__ == '__main__': 
-    #main()
-    inference('/home/ramprasad.sa/summarization/scripts/bart_text-to-text/checkpoint_files/epoch=4-val_loss=0.26.ckpt')
+    main()
+    #inference('/home/ramprasad.sa/summarization/scripts/bart_text-to-text/checkpoint_files/epoch=4-val_loss=0.26.ckpt')
    
